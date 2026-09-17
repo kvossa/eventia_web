@@ -161,6 +161,12 @@ importers:
       '@angular/router':
         specifier: ^22.1.0
         version: 22.1.6(@angular/common@22.1.6(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2))(@angular/platform-browser@22.1.6(@angular/common@22.1.6(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@22.1.6(@angular/compiler@22.1.6)(rxjs@7.8.2)))(rxjs@7.8.2)
+      '@eventia/shared':
+        specifier: workspace:*
+        version: link:../shared
+      qrcode:
+        specifier: ^1.5.4
+        version: 1.5.4
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
@@ -177,6 +183,9 @@ importers:
       '@angular/compiler-cli':
         specifier: ^22.1.0
         version: 22.1.6(@angular/compiler@22.1.6)(typescript@6.0.3)
+      '@types/qrcode':
+        specifier: ^1.5.6
+        version: 1.5.6
       jsdom:
         specifier: ^28.0.0
         version: 28.1.0(@noble/hashes@1.8.0)
@@ -1887,6 +1896,9 @@ packages:
 
   '@types/passport@1.0.17':
     resolution: {integrity: sha512-aciLyx+wDwT2t2/kJGJR2AEeBz0nJU4WuRX04Wu9Dqc5lSUtwu0WERPHYsLhF9PtseiAMPBGNUOtFjxZ56prsg==}
+
+  '@types/qrcode@1.5.6':
+    resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
 
   '@types/qs@6.15.1':
     resolution: {integrity: sha512-GZHUBZR9hckSUhrxmp1nG6NwdpM9fCunJwyThLW1X3AyHgd9IlHb6VANpQQqDr2o/qQp6McZ3y/IA2rVzKzSbw==}
@@ -5249,6 +5261,10 @@ snapshots:
   '@types/passport@1.0.17':
     dependencies:
       '@types/express': 5.0.6
+
+  '@types/qrcode@1.5.6':
+    dependencies:
+      '@types/node': 24.13.4
 
   '@types/qs@6.15.1': {}
 

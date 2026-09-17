@@ -1,9 +1,252 @@
-/* You can add global styles to this file, and also import other style files */
 :root {
-    --color-bg: #0b0f1a;
-    --color-surface: #151b2e;
-    --color-accent: #7c3aed;
-    --color-text: #f5f7ff;
-    --radius-card: 16px;
-    --space-unit: 8px;
+  --color-bg: #070a12;
+  --color-surface: #10151f;
+  --color-surface-2: #161d2c;
+  --color-border: #222b3d;
+  --color-text: #eef1f8;
+  --color-text-dim: #8a93a8;
+  --color-accent: #8b5cf6;
+  --color-accent-hover: #9d73f7;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --radius-card: 16px;
+  --radius-sm: 8px;
+  --container: 1120px;
+  --space-unit: 8px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+button {
+  font: inherit;
+}
+
+.page {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 24px clamp(16px, 4vw, 40px);
+}
+
+.page-title {
+  font-size: 1.8rem;
+  margin: 0 0 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+
+.field {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.field:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+label.form-label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.form-field {
+  margin-bottom: 16px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge.available {
+  background: rgba(52, 211, 153, 0.14);
+  color: var(--color-success);
+}
+
+.badge.almost_sold_out {
+  background: rgba(251, 191, 36, 0.14);
+  color: var(--color-warning);
+}
+
+.badge.sold_out {
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--color-danger);
+}
+
+.badge.temporarily_unavailable {
+  background: rgba(138, 147, 168, 0.14);
+  color: var(--color-text-dim);
+}
+
+.grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-cards {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.card-pad {
+  padding: 20px;
+}
+
+.divider-line {
+  height: 1px;
+  background: var(--color-border);
+  border: none;
+  margin: 16px 0;
+}
+
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  min-width: 240px;
+  max-width: 360px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: toast-in 0.2s ease;
+}
+
+.toast.success {
+  border-color: var(--color-success);
+}
+
+.toast.error {
+  border-color: var(--color-danger);
+}
+
+.toast.info {
+  border-color: var(--color-accent);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
