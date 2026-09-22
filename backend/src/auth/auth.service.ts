@@ -85,6 +85,20 @@ export class AuthService {
     await this.sessionsRepository.update({ userId }, { revokedAt: new Date() });
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.usersService.save(user);
+    await this.revokeAllForUser(userId);
+  }
+
   private async issueTokens(user: User): Promise<AuthResult> {
     const accessToken = await this.jwtService.signAsync(
       { email: user.email, role: user.role },

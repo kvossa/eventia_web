@@ -68,6 +68,15 @@ export class EventsController {
     return this.eventsService.setStatus(id, 'sold_out');
   }
 
+  @Post(':id/duplicate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Duplicate an event incl. ticket types (admin, draft copy)' })
+  duplicate(@Param('id') id: string) {
+    return this.eventsService.duplicate(id);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

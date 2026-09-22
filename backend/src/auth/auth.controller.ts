@@ -1,14 +1,18 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import type { AuthUserPayload } from '../common/decorators/current-user.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { CART_COOKIE, clearRefreshCookie, REFRESH_COOKIE, setCartCookie, setRefreshCookie } from '../common/cookies.js';
 import { parseTtlMs } from '../common/duration.js';
 import { CART_TTL_MS } from '../cart/cart.service.js';
 import { AuthResult, AuthService } from './auth.service.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -59,6 +63,21 @@ export class AuthController {
     }
     const result = await this.authService.refresh(token);
     return this.authResponse(res, result);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password and revoke all refresh sessions' })
+  async changePassword(
+    @CurrentUser() user: AuthUserPayload,
+    @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.changePassword(user.sub, dto.currentPassword, dto.newPassword);
+    clearRefreshCookie(res, { secure: this.cookieSecure });
+    return { success: true };
   }
 
   @Post('logout')

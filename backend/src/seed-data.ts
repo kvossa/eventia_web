@@ -332,10 +332,17 @@ const SEED_EVENTS: SeedEvent[] = [
   },
 ];
 
+const SEED_FAVORITES: { email: string; events: string[] }[] = [
+  { email: 'alice@example.com', events: ['Neon Nights Festival', 'Indie Nights: Live Session'] },
+  { email: 'sam@example.com', events: ['Neon Nights Festival', 'Theatre Gala Premiere'] },
+  { email: 'mia@example.com', events: ['City Sports Festival'] },
+];
+
 export {
   DEMO_USERS,
   SEED_CATEGORIES,
   SEED_ORGANIZERS,
   SEED_VENUES,
   SEED_EVENTS,
+  SEED_FAVORITES,
 };

@@ -23,6 +23,10 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { id } });
   }
 
+  save(user: User): Promise<User> {
+    return this.usersRepository.save(user);
+  }
+
   findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email: this.normalizeEmail(email) } });
   }

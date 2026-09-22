@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module.js';
+import { AdminModule } from './admin/admin.module.js';
 import { CartModule } from './cart/cart.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { CheckoutModule } from './checkout/checkout.module.js';
@@ -12,6 +13,7 @@ import { NotFoundModule } from './common/routing/not-found.module.js';
 import { buildDataSourceOptions } from './config/database.config.js';
 import { EntitiesModule } from './entities/entities.module.js';
 import { EventsModule } from './events/events.module.js';
+import { FavoritesModule } from './favorites/favorites.module.js';
 import { HealthModule } from './health/health.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { OrdersModule } from './orders/orders.module.js';
@@ -52,6 +54,7 @@ import { VenuesModule } from './venues/venues.module.js';
     }),
     HealthModule,
     EntitiesModule,
+    AdminModule,
     UsersModule,
     CartModule,
     AuthModule,
@@ -64,6 +67,7 @@ import { VenuesModule } from './venues/venues.module.js';
     OrdersModule,
     TicketsModule,
     NotificationsModule,
+    FavoritesModule,
     NotFoundModule,
   ],
   providers: [

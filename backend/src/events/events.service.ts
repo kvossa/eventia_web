@@ -100,6 +100,10 @@ export class EventsService {
     return { data: items, page, limit, total };
   }
 
+  findById(id: string): Promise<Event | null> {
+    return this.eventsRepo.findOne({ where: { id } });
+  }
+
   async detail(id: string): Promise<EventDetail> {
     const event = await this.eventsRepo.findOne({
       where: { id, status: 'published' },
@@ -175,6 +179,60 @@ export class EventsService {
     const event = await this.eventsRepo.findOne({ where: { id } });
     if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
     await this.eventsRepo.softRemove(event);
+  }
+
+  async duplicate(id: string): Promise<EventListItem> {
+    const event = await this.eventsRepo.findOne({ where: { id } });
+    if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
+
+    const ticketTypes = await this.ticketTypesRepo.find({ where: { eventId: event.id } });
+    const name = event.name.length > 250 ? `${event.name.slice(0, 250)} (copy)` : `${event.name} (copy)`;
+
+    const copy = this.eventsRepo.create({
+      name,
+      description: event.description,
+      categoryId: event.categoryId,
+      organizerId: event.organizerId,
+      venueId: event.venueId,
+      dateTime: event.dateTime,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      maxCapacity: event.maxCapacity,
+      ageRestriction: event.ageRestriction,
+      accessibilityInfo: event.accessibilityInfo,
+      city: event.city,
+      address: event.address,
+      featured: false,
+      imageUrl: event.imageUrl,
+      status: 'draft',
+    });
+    const saved = await this.eventsRepo.save(copy);
+
+    if (ticketTypes.length > 0) {
+      await this.ticketTypesRepo.save(
+        ticketTypes.map((tt) =>
+          this.ticketTypesRepo.create({
+            eventId: saved.id,
+            name: tt.name,
+            description: tt.description,
+            priceCents: tt.priceCents,
+            quantity: tt.quantity,
+            quantitySold: 0,
+            salesStartsAt: tt.salesStartsAt,
+            salesEndsAt: tt.salesEndsAt,
+            isVisible: tt.isVisible,
+            maxPerCustomer: tt.maxPerCustomer,
+          }),
+        ),
+      );
+    }
+
+    const copiedTicketTypes = await this.ticketTypesRepo.find({ where: { eventId: saved.id } });
+    return this.buildListItem(saved, copiedTicketTypes);
+  }
+
+  async decorateEvents(events: Event[]): Promise<EventListItem[]> {
+    return this.decorate(events);
   }
 
   private async decorate(events: Event[]): Promise<EventListItem[]> {

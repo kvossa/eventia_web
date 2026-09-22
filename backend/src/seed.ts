@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { AppDataSource } from './config/data-source.js';
 import { Category } from './entities/category.entity.js';
 import { Event } from './entities/event.entity.js';
+import { Favorite } from './entities/favorite.entity.js';
 import { Organizer } from './entities/organizer.entity.js';
 import { TicketType } from './entities/ticket-type.entity.js';
 import { User } from './entities/user.entity.js';
@@ -11,6 +12,7 @@ import {
   DEMO_USERS,
   SEED_CATEGORIES,
   SEED_EVENTS,
+  SEED_FAVORITES,
   SEED_ORGANIZERS,
   SEED_VENUES,
   type SeedEvent,
@@ -141,6 +143,25 @@ async function seedEvent(
   }
 }
 
+async function seedFavorites(): Promise<void> {
+  const userRepo = AppDataSource.getRepository(User);
+  const eventRepo = AppDataSource.getRepository(Event);
+  const favRepo = AppDataSource.getRepository(Favorite);
+
+  for (const spec of SEED_FAVORITES) {
+    const user = await userRepo.findOneBy({ email: spec.email });
+    if (!user) continue;
+    for (const eventName of spec.events) {
+      const event = await eventRepo.findOneBy({ name: eventName });
+      if (!event) continue;
+      const existing = await favRepo.findOneBy({ userId: user.id, eventId: event.id });
+      if (existing) continue;
+      await favRepo.save(favRepo.create({ userId: user.id, eventId: event.id }));
+      created.favorites = (created.favorites ?? 0) + 1;
+    }
+  }
+}
+
 async function seedAll(): Promise<void> {
   await seedUsers();
 
@@ -151,6 +172,8 @@ async function seedAll(): Promise<void> {
   for (const ev of SEED_EVENTS) {
     await seedEvent(ev, categories, organizers, venues);
   }
+
+  await seedFavorites();
 }
 
 async function main(): Promise<void> {

@@ -3,6 +3,7 @@ import { CartItem } from './cart-item.entity.js';
 import { Category } from './category.entity.js';
 import { EmailOutboxRecord } from './email-outbox.entity.js';
 import { Event } from './event.entity.js';
+import { Favorite } from './favorite.entity.js';
 import { Notification } from './notification.entity.js';
 import { Order } from './order.entity.js';
 import { OrderItem } from './order-item.entity.js';
@@ -17,6 +18,7 @@ import { Venue } from './venue.entity.js';
 export const entities = [
   User,
   RefreshSession,
+  Favorite,
   Category,
   Organizer,
   Venue,
