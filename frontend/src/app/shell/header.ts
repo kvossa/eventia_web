@@ -14,6 +14,8 @@ import { ToastService } from '../core/toast.service';
         <a routerLink="/events" routerLinkActive="active">Events</a>
         @if (auth.isAuthenticated()) {
           <a routerLink="/my-tickets" routerLinkActive="active">My Tickets</a>
+          <a routerLink="/my-profile" routerLinkActive="active">My Profile</a>
+          <a routerLink="/my-favorites" routerLinkActive="active">My Favorites</a>
         }
       </nav>
       <div class="actions">

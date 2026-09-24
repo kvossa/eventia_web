@@ -186,3 +186,41 @@ export interface OrderDetailView {
     amountCents: number;
   } | null;
 }
+export interface ProfileView {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  createdAt: string;
+}
+
+export interface UserUpdateInput {
+  name?: string;
+  email?: string;
+}
+
+export interface PasswordChangeInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface FavoriteView extends EventListItem {
+  favoritedAt: string;
+}
+
+export interface MyOrderListItem extends OrderDetailView {}
+
+export interface NotificationPreferencesInput {
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+}
+
+export interface OrderListParams {
+  page?: number;
+  limit?: number;
+  status?: OrderStatus;
+}
+
+export type FavoriteAddResponse = { id: string };
+export type FavoriteRemoveResponse = void;
+export type PasswordChangeResponse = { success: boolean };

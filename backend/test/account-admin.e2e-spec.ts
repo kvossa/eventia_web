@@ -6,7 +6,7 @@ import { AppModule } from '../src/app.module.js';
 const ADMIN_EMAIL = 'root@eventia.local';
 const ADMIN_PASSWORD = 'adminpass1234';
 const USER_PASSWORD = 'e2epass123';
-const suffix = Date.now().toString(36);
+const suffix = `aa-${Date.now().toString(36)}`;
 const USER_EMAIL = `e2e-${suffix}@example.com`;
 const USER_FIRST = 'E2E';
 const USER_LAST = 'Customer';

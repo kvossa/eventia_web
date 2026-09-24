@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
 
-const suffix = Date.now().toString(36);
+const suffix = `ck-${Date.now().toString(36)}`;
 const ADMIN_EMAIL = 'root@eventia.local';
 const ADMIN_PASSWORD = 'adminpass1234';
 const USER_EMAIL = `e2e-${suffix}@example.com`;

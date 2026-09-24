@@ -38,6 +38,15 @@ type SalesState = 'not_started' | 'open' | 'ended';
               {{ event.venue.name }} — {{ event.venue.address }}, {{ event.venue.city }}
             </p>
             <p class="sub">
+              <button
+                class="btn favorite-btn"
+                type="button"
+                (click)="toggleFavorite()"
+                [attr.aria-pressed]="favorited()"
+                data-testid="favorite-toggle"
+              >{{ favorited() ? 'Favorited ♥' : 'Add to favorites ♡' }}</button>
+            </p>
+            <p class="sub">
               @if (event.category) {
                 <span class="chip">{{ event.category.name }}</span>
               }
@@ -153,6 +162,7 @@ export class EventDetailPage implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly quantities = new Map<string, number>();
   readonly adding = signal(false);
+  readonly favorited = signal(false);
 
   protected readonly formatCents = formatCents;
   protected readonly formatDateTime = formatDateTime;
@@ -164,10 +174,40 @@ export class EventDetailPage implements OnInit, OnDestroy {
   private sub: Subscription | null = null;
 
   async ngOnInit(): Promise<void> {
+    void this.seedFavorite();
     this.sub = this.route.params.subscribe((params) => {
       const id = params['id'];
       if (id) void this.load(id);
     });
+  }
+
+  async seedFavorite(): Promise<void> {
+    try {
+      const res = await this.api.favorites();
+      const ev = this.event();
+      this.favorited.set(ev ? res.data.some((f) => f.id === ev.id) : false);
+    } catch {
+      this.favorited.set(false);
+    }
+  }
+
+  async toggleFavorite(): Promise<void> {
+    const ev = this.event();
+    if (!ev) return;
+    const next = !this.favorited();
+    this.favorited.set(next);
+    try {
+      if (next) {
+        await this.api.favoriteAdd(ev.id);
+        this.toast.show('success', 'Added to favorites.');
+      } else {
+        await this.api.favoriteRemove(ev.id);
+        this.toast.show('success', 'Removed from favorites.');
+      }
+    } catch (err) {
+      this.favorited.set(!next);
+      this.toast.show('error', (err as Error).message);
+    }
   }
 
   ngOnDestroy(): void {

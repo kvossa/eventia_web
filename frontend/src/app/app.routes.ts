@@ -37,5 +37,19 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./pages/tickets/my-tickets').then((m) => m.MyTicketsPage),
   },
+  {
+    path: 'my-favorites',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/account/my-favorites').then(
+      (m) => m.MyFavoritesPage,
+    ),
+  },
+  {
+    path: 'my-profile',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/account/my-profile').then(
+      (m) => m.MyProfilePage,
+    ),
+  },
   { path: '**', redirectTo: '' },
 ];

@@ -2,7 +2,21 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Injectable } from '@angular/core';
 import { lastValueFrom } from 'rxjs';
 import { environment } from './env';
-import { ApiError } from './models';
+import {
+  ApiError,
+  FavoriteAddResponse,
+  FavoriteRemoveResponse,
+  FavoriteView,
+  MyOrderListItem,
+  OrderDetailView,
+  NotificationPreferencesInput,
+  OrderListParams,
+  Paginated,
+  PasswordChangeInput,
+  PasswordChangeResponse,
+  ProfileView,
+  UserUpdateInput,
+} from './models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -26,6 +40,42 @@ export class ApiService {
 
   delete<T>(path: string): Promise<T> {
     return this.request(() => lastValueFrom(this.http.delete<T>(this.url(path))));
+  }
+
+  me<T = ProfileView>(): Promise<T> {
+    return this.get<T>('/api/v1/users/me');
+  }
+
+  updateProfile<T = ProfileView>(body: UserUpdateInput): Promise<T> {
+    return this.patch<T>('/api/v1/users/me', body);
+  }
+
+  changePassword(body: PasswordChangeInput): Promise<PasswordChangeResponse> {
+    return this.post<PasswordChangeResponse>('/api/v1/auth/change-password', body);
+  }
+
+  favorites<T = Paginated<FavoriteView>>(params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    return this.get<T>('/api/v1/favorites', params);
+  }
+
+  favoriteAdd<T = FavoriteAddResponse>(eventId: string): Promise<T> {
+    return this.post<T>(`/api/v1/favorites/${eventId}`, {});
+  }
+
+  favoriteRemove<T = FavoriteRemoveResponse>(eventId: string): Promise<T> {
+    return this.delete<T>(`/api/v1/favorites/${eventId}`);
+  }
+
+  myOrders<T = Paginated<MyOrderListItem>>(params: OrderListParams): Promise<T> {
+    return this.get<T>('/api/v1/orders', params as Record<string, string | number | boolean | undefined>);
+  }
+
+  myOrder<T = OrderDetailView>(id: string): Promise<T> {
+    return this.get<T>(`/api/v1/orders/${id}`);
+  }
+
+  updateNotificationPreferences<T = NotificationPreferencesInput>(body: NotificationPreferencesInput): Promise<T> {
+    return this.patch<T>('/api/v1/users/me/notification-preferences', body);
   }
 
   private async request<T>(run: () => Promise<T>): Promise<T> {
