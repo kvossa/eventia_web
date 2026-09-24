@@ -94,6 +94,10 @@ export class ApiService {
     return this.get<T>(`/api/v1/orders/${id}`);
   }
 
+  cancelOrder<T = OrderDetailView>(id: string): Promise<T> {
+    return this.post<T>(`/api/v1/orders/${id}/cancel`, {});
+  }
+
   updateNotificationPreferences<T = NotificationPreferencesInput>(body: NotificationPreferencesInput): Promise<T> {
     return this.patch<T>('/api/v1/users/me/notification-preferences', body);
   }
@@ -143,6 +147,13 @@ export class ApiService {
 
   adminOrderRefund(id: string): Promise<OrderDetailView> {
     return this.post<OrderDetailView>(`/api/v1/admin/orders/${id}/refund`, {});
+  }
+
+  adminOrdersExport(params?: AdminOrderQueryParams): Promise<{ csv: string }> {
+    return this.get<{ csv: string }>(
+      '/api/v1/admin/orders/export',
+      params as Record<string, string | number | boolean | undefined>,
+    );
   }
 
   categories(): Promise<Category[]> {

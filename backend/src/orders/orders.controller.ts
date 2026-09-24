@@ -28,6 +28,13 @@ export class OrdersController {
   detail(@CurrentUser() user: AuthUserPayload, @Param('id') id: string) {
     return this.ordersService.detailForUser(user.sub, id);
   }
+
+  @Post(':id/cancel')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel own order and refund (customer)' })
+  cancel(@CurrentUser() user: AuthUserPayload, @Param('id') id: string) {
+    return this.ordersService.cancelForUser(user.sub, id);
+  }
 }
 
 @ApiTags('admin-orders')
@@ -42,6 +49,14 @@ export class AdminOrdersController {
   @ApiOperation({ summary: 'Search/filter all orders (admin)' })
   list(@Query() query: OrderQueryDto) {
     return this.ordersService.listAdmin(query);
+  }
+
+  @Get('export')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Export orders as CSV (admin)' })
+  async export(@Query() query: OrderQueryDto) {
+    return { csv: await this.ordersService.exportCsv(query) };
   }
 
   @Get(':id')

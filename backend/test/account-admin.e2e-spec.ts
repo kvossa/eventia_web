@@ -273,4 +273,50 @@ describe('Account & admin foundations (e2e)', () => {
     const read = await send(app, 'patch', `/api/v1/notifications/${found.id}/read`, userToken, {}).expect(200);
     expect(read.body.id).toBe(found.id);
   });
+
+  it('customer cancel: refunds order, restores stock, 409 on re-cancel, 404 cross-user', async () => {
+    await send(app, 'post', '/api/v1/cart/items', userToken, {
+      ticketTypeId,
+      quantity: 1,
+    }).expect(201);
+    const order = await send(app, 'post', '/api/v1/checkout', userToken, {}).expect(201);
+
+    const adminDetail = await send(app, 'get', `/api/v1/admin/events/${eventId}`, adminToken).expect(200);
+    const ttAfter = adminDetail.body.ticketTypes.find((t) => t.id === ticketTypeId);
+    expect(ttAfter).toBeDefined();
+    const soldAfter = ttAfter.quantitySold as number;
+
+    const cancelled = await send(app, 'post', `/api/v1/orders/${order.body.id}/cancel`, userToken).expect(201);
+    expect(cancelled.body.id).toBe(order.body.id);
+    expect(cancelled.body.status).toBe('refunded');
+    expect(cancelled.body.payment.status).toBe('refunded');
+
+    const afterCancel = await send(app, 'get', `/api/v1/admin/events/${eventId}`, adminToken).expect(200);
+    const ttRestored = afterCancel.body.ticketTypes.find((t) => t.id === ticketTypeId);
+    expect(ttRestored.quantitySold).toBe(soldAfter - 1);
+
+    await send(app, 'post', `/api/v1/orders/${order.body.id}/cancel`, userToken).expect(409);
+
+    const otherReg = await send(app, 'post', '/api/v1/auth/register', undefined, {
+      email: `e2e-other-${suffix}@example.com`,
+      password: 'e2epass123',
+      name: 'Other User',
+    }).expect(201);
+    await send(app, 'post', `/api/v1/orders/${order.body.id}/cancel`, otherReg.body.accessToken).expect(404);
+  });
+
+  it('admin orders export: CSV header + rows, respects status filter, customer blocked', async () => {
+    await send(app, 'get', '/api/v1/admin/orders/export', userToken).expect(403);
+
+    const csv = await send(app, 'get', '/api/v1/admin/orders/export', adminToken).expect(200);
+    const lines = (csv.body.csv as string).split('\r\n');
+    expect(lines[0]).toBe('orderNumber,createdAt,customerName,customerEmail,status,totalCents,itemsCount,paymentStatus');
+    const rows = lines.slice(1).filter(Boolean);
+    expect(rows.length).toBeGreaterThan(0);
+
+    const confirmed = await send(app, 'get', '/api/v1/admin/orders/export?status=confirmed', adminToken).expect(200);
+    const confRows = (confirmed.body.csv as string).split('\r\n').slice(1).filter(Boolean);
+    expect(confRows.length).toBeGreaterThan(0);
+    expect(confRows.every((l) => l.split(',')[4] === 'confirmed')).toBe(true);
+  });
 });

@@ -28,6 +28,18 @@ import { OrderDetailView } from '../../core/models';
           }
         </div>
 
+        @if (order()!.status === 'confirmed') {
+          <div class="cancel-row">
+            <button
+              class="btn btn-danger"
+              type="button"
+              [disabled]="cancelling()"
+              (click)="cancel()"
+              data-testid="cancel-order"
+            >{{ cancelling() ? 'Cancelling…' : 'Cancel order & refund' }}</button>
+          </div>
+        }
+
         <a class="btn btn-primary" routerLink="/my-orders" data-testid="orders-back">Back to My Orders</a>
       } @else {
         <div class="card card-pad" data-testid="order-not-found">
@@ -37,9 +49,14 @@ import { OrderDetailView } from '../../core/models';
       }
     </div>
   `,
+  styles: `
+    .cancel-row { margin: 18px 0; }
+    .btn-danger { background: var(--color-danger); color: var(--color-bg); border: none; }
+  `,
 })
 export class MyOrderDetailPage {
   readonly loading = signal(true);
+  readonly cancelling = signal(false);
   readonly order = signal<OrderDetailView | null>(null);
 
   private readonly route = inject(ActivatedRoute);
@@ -67,6 +84,22 @@ export class MyOrderDetailPage {
 
   statusLabel(o: OrderDetailView): string {
     return o.status.charAt(0).toUpperCase() + o.status.slice(1);
+  }
+
+  async cancel(): Promise<void> {
+    const o = this.order();
+    if (!o || o.status !== 'confirmed') return;
+    if (!window.confirm(`Cancel order ${o.orderNumber} and refund ${this.cents(o.totalCents)}?`)) return;
+    this.cancelling.set(true);
+    try {
+      const updated = await this.api.cancelOrder(o.id);
+      this.order.set(updated);
+      this.toast.show('success', `Order ${updated.orderNumber} cancelled and refunded.`);
+    } catch (err) {
+      this.toast.show('error', (err as Error).message);
+    } finally {
+      this.cancelling.set(false);
+    }
   }
 
   cents(c: number): string {

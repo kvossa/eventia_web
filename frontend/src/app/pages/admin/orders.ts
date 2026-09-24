@@ -51,6 +51,15 @@ import type { OrderStatus } from '@eventia/shared';
         <div class="form-field">
           <button class="btn btn-primary" type="submit" data-testid="admin-orders-search">Search</button>
         </div>
+        <div class="form-field">
+          <button
+            class="btn btn-ghost"
+            type="button"
+            [disabled]="exporting()"
+            (click)="exportCsv()"
+            data-testid="admin-orders-export"
+          >{{ exporting() ? 'Exporting…' : 'Export CSV' }}</button>
+        </div>
       </form>
 
       @if (loading()) {
@@ -127,6 +136,7 @@ export class AdminOrdersPage {
   readonly orders = signal<OrderDetailView[]>([]);
   readonly page = signal(1);
   readonly limit = 10;
+  readonly exporting = signal(false);
 
   protected status = '';
   protected query = '';
@@ -149,6 +159,29 @@ export class AdminOrdersPage {
 
   async search(): Promise<void> {
     await this.load(1);
+  }
+
+  async exportCsv(): Promise<void> {
+    this.exporting.set(true);
+    try {
+      const q = this.query.trim() || undefined;
+      const status = (this.status || undefined) as OrderStatus | undefined;
+      const from = this.from || undefined;
+      const to = this.to || undefined;
+      const res = await this.api.adminOrdersExport({ q, status, from, to });
+      const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'eventia-orders.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      this.toast.show('success', 'Orders exported.');
+    } catch (err) {
+      this.toast.show('error', (err as Error).message);
+    } finally {
+      this.exporting.set(false);
+    }
   }
 
   itemsLabel(o: OrderDetailView): string {
