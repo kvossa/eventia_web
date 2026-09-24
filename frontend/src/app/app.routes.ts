@@ -45,6 +45,32 @@ export const routes: Routes = [
     ),
   },
   {
+    path: 'my-orders',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/orders/my-orders').then((m) => m.MyOrdersPage),
+  },
+  {
+    path: 'my-orders/:id',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/orders/my-order-detail').then(
+      (m) => m.MyOrderDetailPage,
+    ),
+  },
+  {
+    path: 'my-orders',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/orders/my-orders').then(
+      (m) => m.MyOrdersPage,
+    ),
+  },
+  {
+    path: 'my-orders/:id',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/orders/my-order-detail').then(
+      (m) => m.MyOrderDetailPage,
+    ),
+  },
+  {
     path: 'my-profile',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/account/my-profile').then(

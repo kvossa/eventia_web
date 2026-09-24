@@ -1,5 +1,6 @@
 import { Component, signal, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AvailabilityBadge } from '../../components/availability-badge';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
@@ -7,7 +8,7 @@ import { FavoriteView } from '../../core/models';
 
 @Component({
   selector: 'app-my-favorites',
-  imports: [RouterLink, Loading],
+  imports: [RouterLink, Loading, AvailabilityBadge],
   template: `
     <div class="page">
       <h1 class="page-title">My Favorites</h1>
@@ -23,6 +24,7 @@ import { FavoriteView } from '../../core/models';
         <div class="grid" data-testid="favorites-list">
           @for (ev of items(); track ev.id) {
             <div class="card card-pad" [attr.data-testid]="'favorite-' + ev.id">
+              <app-availability-badge [state]="ev.availability.state" />
               <a class="event-name" routerLink="/events/{{ ev.id }}">
                 <h2>{{ ev.name }}</h2>
                 <p class="meta">{{ ev.dateTime }} · {{ ev.city }}</p>
