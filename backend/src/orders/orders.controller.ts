@@ -44,6 +44,14 @@ export class AdminOrdersController {
     return this.ordersService.listAdmin(query);
   }
 
+  @Get(':id')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Order detail (admin)' })
+  detail(@Param('id') id: string) {
+    return this.ordersService.detailAdmin(id);
+  }
+
   @Patch(':id/status')
   @Roles('admin')
   @ApiBearerAuth()

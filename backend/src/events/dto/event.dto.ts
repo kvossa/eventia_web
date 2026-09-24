@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -11,6 +12,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { EVENT_STATUSES, type EventStatus } from '@eventia/shared';
 
 export class CreateEventDto {
   @IsString()
@@ -212,4 +214,10 @@ export class EventQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+}
+
+export class AdminEventQueryDto extends EventQueryDto {
+  @IsOptional()
+  @IsEnum(EVENT_STATUSES)
+  status?: EventStatus;
 }

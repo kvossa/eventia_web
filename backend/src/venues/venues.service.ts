@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundError } from '../common/app-error.js';
+import { ConflictError, NotFoundError } from '../common/app-error.js';
+import { Event } from '../entities/event.entity.js';
 import { Venue } from '../entities/venue.entity.js';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class VenuesService {
   constructor(
     @InjectRepository(Venue)
     private readonly repo: Repository<Venue>,
+    @InjectRepository(Event)
+    private readonly eventsRepo: Repository<Event>,
   ) {}
 
   findAll(): Promise<Venue[]> {
@@ -34,6 +37,10 @@ export class VenuesService {
 
   async remove(id: string): Promise<void> {
     const venue = await this.findOne(id);
+    const used = await this.eventsRepo.count({ where: { venueId: id } });
+    if (used > 0) {
+      throw new ConflictError('VENUE_IN_USE', 'Cannot delete a venue that still has events');
+    }
     await this.repo.softRemove(venue);
   }
 }

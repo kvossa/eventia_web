@@ -32,6 +32,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  description: string | null;
 }
 
 export interface Venue {
@@ -40,12 +41,17 @@ export interface Venue {
   city: string;
   address: string;
   capacity: number | null;
+  description: string | null;
+  imageUrl: string | null;
 }
 
 export interface Organizer {
   id: string;
   name: string;
   slug: string;
+  description: string | null;
+  websiteUrl: string | null;
+  logoUrl: string | null;
 }
 
 export interface EventAvailability {
@@ -59,9 +65,15 @@ export interface EventListItem {
   id: string;
   name: string;
   description: string | null;
+  categoryId: string;
+  organizerId: string;
+  venueId: string;
   dateTime: string;
+  startTime: string | null;
+  endTime: string | null;
   city: string;
   address: string;
+  maxCapacity: number | null;
   status: EventStatus;
   featured: boolean;
   imageUrl: string | null;
@@ -71,7 +83,7 @@ export interface EventListItem {
   venue: Venue;
   organizer: Organizer;
   availability: EventAvailability;
-  fromPriceCents: number;
+  fromPriceCents: number | null;
 }
 
 export interface TicketType {
@@ -224,3 +236,113 @@ export interface OrderListParams {
 export type FavoriteAddResponse = { id: string };
 export type FavoriteRemoveResponse = void;
 export type PasswordChangeResponse = { success: boolean };
+
+export interface AdminRecentOrder {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  totalCents: number;
+  createdAt: string;
+  customerName: string;
+  customerEmail: string;
+}
+
+export interface AdminStats {
+  totalEvents: number;
+  publishedEvents: number;
+  totalUsers: number;
+  totalOrders: number;
+  totalRevenueCents: number;
+  ticketsSold: number;
+  upcomingEvents: number;
+  recentOrders: AdminRecentOrder[];
+}
+
+export interface PublicUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  profileImageUrl: string | null;
+  preferredCity: string | null;
+  role: UserRole;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminUserQueryParams {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminOrderQueryParams {
+  status?: OrderStatus;
+  q?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminEventQueryParams {
+  q?: string;
+  category?: string;
+  status?: EventStatus;
+  city?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface EventFormValue {
+  name: string;
+  description?: string;
+  categoryId: string;
+  organizerId: string;
+  venueId: string;
+  dateTime: string;
+  startTime?: string;
+  endTime?: string;
+  maxCapacity?: number | null;
+  ageRestriction?: string;
+  accessibilityInfo?: string;
+  city?: string;
+  address?: string;
+  featured?: boolean;
+  imageUrl?: string;
+}
+
+export interface TicketTypeInput {
+  eventId?: string;
+  name?: string;
+  description?: string;
+  priceCents?: number;
+  quantity?: number;
+  salesStartsAt?: string;
+  salesEndsAt?: string;
+  isVisible?: boolean;
+  maxPerCustomer?: number | null;
+}
+
+export interface VenueInput {
+  name: string;
+  city: string;
+  address: string;
+  description?: string | null;
+  capacity?: number | null;
+  imageUrl?: string | null;
+}
+
+export interface OrganizerInput {
+  name: string;
+  slug: string;
+  description?: string | null;
+  websiteUrl?: string | null;
+  logoUrl?: string | null;
+}
+
+export interface CategoryInput {
+  name: string;
+  slug: string;
+  description?: string | null;
+}

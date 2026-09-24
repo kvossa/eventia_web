@@ -3,7 +3,16 @@ import { Injectable } from '@angular/core';
 import { lastValueFrom } from 'rxjs';
 import { environment } from './env';
 import {
+  AdminEventQueryParams,
+  AdminOrderQueryParams,
+  AdminStats,
+  AdminUserQueryParams,
   ApiError,
+  Category,
+  CategoryInput,
+  EventDetail,
+  EventFormValue,
+  EventListItem,
   FavoriteAddResponse,
   FavoriteRemoveResponse,
   FavoriteView,
@@ -11,12 +20,20 @@ import {
   OrderDetailView,
   NotificationPreferencesInput,
   OrderListParams,
+  Organizer,
+  OrganizerInput,
   Paginated,
   PasswordChangeInput,
   PasswordChangeResponse,
   ProfileView,
+  PublicUser,
+  TicketType,
+  TicketTypeInput,
   UserUpdateInput,
+  Venue,
+  VenueInput,
 } from './models';
+import type { OrderStatus, UserRole } from '@eventia/shared';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -76,6 +93,140 @@ export class ApiService {
 
   updateNotificationPreferences<T = NotificationPreferencesInput>(body: NotificationPreferencesInput): Promise<T> {
     return this.patch<T>('/api/v1/users/me/notification-preferences', body);
+  }
+
+  adminStats(): Promise<AdminStats> {
+    return this.get<AdminStats>('/api/v1/admin/stats');
+  }
+
+  adminUsers(params?: AdminUserQueryParams): Promise<Paginated<PublicUser>> {
+    return this.get<Paginated<PublicUser>>('/api/v1/admin/users', params as Record<string, string | number | boolean | undefined>);
+  }
+
+  adminUserRole(id: string, role: UserRole): Promise<PublicUser> {
+    return this.patch<PublicUser>(`/api/v1/admin/users/${id}`, { role });
+  }
+
+  adminOrders(params?: AdminOrderQueryParams): Promise<Paginated<OrderDetailView>> {
+    return this.get<Paginated<OrderDetailView>>(
+      '/api/v1/admin/orders',
+      params as Record<string, string | number | boolean | undefined>,
+    );
+  }
+
+  adminOrder(id: string): Promise<OrderDetailView> {
+    return this.get<OrderDetailView>(`/api/v1/admin/orders/${id}`);
+  }
+
+  adminOrderStatus(id: string, status: OrderStatus): Promise<OrderDetailView> {
+    return this.patch<OrderDetailView>(`/api/v1/admin/orders/${id}/status`, { status });
+  }
+
+  adminOrderRefund(id: string): Promise<OrderDetailView> {
+    return this.post<OrderDetailView>(`/api/v1/admin/orders/${id}/refund`, {});
+  }
+
+  categories(): Promise<Category[]> {
+    return this.get<Category[]>('/api/v1/categories');
+  }
+
+  venueCreate(body: VenueInput): Promise<Venue> {
+    return this.post<Venue>('/api/v1/venues', body);
+  }
+
+  venueUpdate(id: string, body: VenueInput): Promise<Venue> {
+    return this.patch<Venue>(`/api/v1/venues/${id}`, body);
+  }
+
+  venueRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/venues/${id}`);
+  }
+
+  organizerCreate(body: OrganizerInput): Promise<Organizer> {
+    return this.post<Organizer>('/api/v1/organizers', body);
+  }
+
+  organizerUpdate(id: string, body: OrganizerInput): Promise<Organizer> {
+    return this.patch<Organizer>(`/api/v1/organizers/${id}`, body);
+  }
+
+  organizerRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/organizers/${id}`);
+  }
+
+  categoryCreate(body: CategoryInput): Promise<Category> {
+    return this.post<Category>('/api/v1/categories', body);
+  }
+
+  categoryUpdate(id: string, body: CategoryInput): Promise<Category> {
+    return this.patch<Category>(`/api/v1/categories/${id}`, body);
+  }
+
+  categoryRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/categories/${id}`);
+  }
+
+  venues(): Promise<Venue[]> {
+    return this.get<Venue[]>('/api/v1/venues');
+  }
+
+  organizers(): Promise<Organizer[]> {
+    return this.get<Organizer[]>('/api/v1/organizers');
+  }
+
+  adminEvents(params?: AdminEventQueryParams): Promise<Paginated<EventListItem>> {
+    return this.get<Paginated<EventListItem>>(
+      '/api/v1/admin/events',
+      params as Record<string, string | number | boolean | undefined>,
+    );
+  }
+
+  adminEvent(id: string): Promise<EventDetail> {
+    return this.get<EventDetail>(`/api/v1/admin/events/${id}`);
+  }
+
+  eventCreate(body: EventFormValue): Promise<EventListItem> {
+    return this.post<EventListItem>('/api/v1/events', body);
+  }
+
+  eventUpdate(id: string, body: EventFormValue): Promise<EventListItem> {
+    return this.patch<EventListItem>(`/api/v1/events/${id}`, body);
+  }
+
+  eventPublish(id: string): Promise<EventListItem> {
+    return this.post<EventListItem>(`/api/v1/events/${id}/publish`, {});
+  }
+
+  eventUnpublish(id: string): Promise<EventListItem> {
+    return this.post<EventListItem>(`/api/v1/events/${id}/unpublish`, {});
+  }
+
+  eventMarkSoldOut(id: string): Promise<EventListItem> {
+    return this.post<EventListItem>(`/api/v1/events/${id}/mark-sold-out`, {});
+  }
+
+  eventDuplicate(id: string): Promise<EventListItem> {
+    return this.post<EventListItem>(`/api/v1/events/${id}/duplicate`, {});
+  }
+
+  eventRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/events/${id}`);
+  }
+
+  ticketTypesByEvent(eventId: string): Promise<TicketType[]> {
+    return this.get<TicketType[]>('/api/v1/ticket-types/by-event', { eventId });
+  }
+
+  ticketTypeCreate(body: TicketTypeInput): Promise<TicketType> {
+    return this.post<TicketType>('/api/v1/ticket-types', body);
+  }
+
+  ticketTypeUpdate(id: string, body: TicketTypeInput): Promise<TicketType> {
+    return this.patch<TicketType>(`/api/v1/ticket-types/${id}`, body);
+  }
+
+  ticketTypeRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/ticket-types/${id}`);
   }
 
   private async request<T>(run: () => Promise<T>): Promise<T> {

@@ -25,6 +25,8 @@ describe('Cart to checkout (e2e)', () => {
   let adminToken: string;
   let userToken: string;
   let ticketTypeId: string;
+  let orderId: string;
+  let orderNumber: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -114,6 +116,8 @@ describe('Cart to checkout (e2e)', () => {
     expect(order.payment.status).toBe('succeeded');
     expect(order.items[0].tickets).toHaveLength(2);
     expect(order.items[0].tickets[0].qrPayload).toContain('"v":1');
+    orderId = order.id;
+    orderNumber = order.orderNumber;
 
     const tickets = await request(app.getHttpServer())
       .get('/api/v1/tickets')
@@ -135,5 +139,26 @@ describe('Cart to checkout (e2e)', () => {
       .send({})
       .expect(422);
     expect(empty.body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('admin order detail: customer 403 on admin route, admin fetches and refunds', async () => {
+    await request(app.getHttpServer())
+      .get(`/api/v1/admin/orders/${orderId}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/admin/orders/${orderId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(detail.body.orderNumber).toBe(orderNumber);
+    expect(detail.body.items[0].tickets).toHaveLength(2);
+
+    const refunded = await request(app.getHttpServer())
+      .post(`/api/v1/admin/orders/${orderId}/refund`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(201);
+    expect(refunded.body.status).toBe('refunded');
+    expect(refunded.body.payment.status).toBe('refunded');
+    expect(refunded.body.items[0].tickets[0].status).toBe('refunded');
   });
 });

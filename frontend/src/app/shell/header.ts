@@ -15,9 +15,11 @@ import { ToastService } from '../core/toast.service';
         @if (auth.isAuthenticated()) {
           <a routerLink="/my-tickets" routerLinkActive="active">My Tickets</a>
           <a routerLink="/my-orders" routerLinkActive="active">My Orders</a>
-          <a routerLink="/my-orders" routerLinkActive="active">My Orders</a>
           <a routerLink="/my-profile" routerLinkActive="active">My Profile</a>
           <a routerLink="/my-favorites" routerLinkActive="active">My Favorites</a>
+          @if (auth.user()?.role === 'admin') {
+            <a routerLink="/admin" routerLinkActive="active">Admin</a>
+          }
         }
       </nav>
       <div class="actions">

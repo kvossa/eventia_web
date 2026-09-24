@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
+import { AdminEventQueryDto, CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
 import { EventsService } from './events.service.js';
 
 @ApiTags('events')
@@ -84,5 +84,28 @@ export class EventsController {
   @ApiOperation({ summary: 'Soft-delete an event (admin)' })
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
+  }
+}
+
+@ApiTags('admin-events')
+@Controller('admin/events')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class AdminEventsController {
+  constructor(private readonly eventsService: EventsService) {}
+
+  @Get()
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List all events (admin, optional status filter)' })
+  list(@Query() query: AdminEventQueryDto) {
+    return this.eventsService.listAdmin(query);
+  }
+
+  @Get(':id')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Event detail for any status (admin)' })
+  detail(@Param('id') id: string) {
+    return this.eventsService.detailAdmin(id);
   }
 }

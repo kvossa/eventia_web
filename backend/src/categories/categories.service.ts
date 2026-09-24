@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundError } from '../common/app-error.js';
+import { ConflictError, NotFoundError } from '../common/app-error.js';
 import { Category } from '../entities/category.entity.js';
+import { Event } from '../entities/event.entity.js';
 
 @Injectable()
 export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private readonly repo: Repository<Category>,
+    @InjectRepository(Event)
+    private readonly eventsRepo: Repository<Event>,
   ) {}
 
   findAll(): Promise<Category[]> {
@@ -34,6 +37,10 @@ export class CategoriesService {
 
   async remove(id: string): Promise<void> {
     const cat = await this.findOne(id);
+    const used = await this.eventsRepo.count({ where: { categoryId: id } });
+    if (used > 0) {
+      throw new ConflictError('CATEGORY_IN_USE', 'Cannot delete a category that still has events');
+    }
     await this.repo.remove(cat);
   }
 }

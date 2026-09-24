@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Paginated, EventAvailability } from '@eventia/shared';
+import { Paginated, EventAvailability, EventStatus } from '@eventia/shared';
 import { In, Repository } from 'typeorm';
 import { ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
 import { Category } from '../entities/category.entity.js';
@@ -9,7 +9,7 @@ import { Organizer } from '../entities/organizer.entity.js';
 import { TicketType } from '../entities/ticket-type.entity.js';
 import { Venue } from '../entities/venue.entity.js';
 import { computeAvailability, isSalesOpen } from './availability.service.js';
-import { CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
+import { AdminEventQueryDto, CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
 
 export interface EventListItem extends Event {
   availability: EventAvailability;
@@ -39,12 +39,26 @@ export class EventsService {
   ) {}
 
   async list(query: EventQueryDto): Promise<Paginated<EventListItem>> {
+    return this.runList(query, 'published');
+  }
+
+  async listAdmin(query: AdminEventQueryDto): Promise<Paginated<EventListItem>> {
+    return this.runList(query, query.status);
+  }
+
+  private async runList(
+    query: EventQueryDto,
+    status?: EventStatus,
+  ): Promise<Paginated<EventListItem>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 12;
     const qb = this.eventsRepo
       .createQueryBuilder('event')
-      .where('event.status = :status', { status: 'published' })
       .orderBy('event.dateTime', 'ASC');
+
+    if (status) {
+      qb.andWhere('event.status = :status', { status });
+    }
 
     if (query.q) {
       qb.andWhere(
@@ -112,6 +126,19 @@ export class EventsService {
     if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
     const ticketTypes = await this.ticketTypesRepo.find({
       where: { eventId: event.id, isVisible: true },
+      order: { priceCents: 'ASC' },
+    });
+    return this.buildDetail(event, ticketTypes);
+  }
+
+  async detailAdmin(id: string): Promise<EventDetail> {
+    const event = await this.eventsRepo.findOne({
+      where: { id },
+      relations: { venue: true, category: true, organizer: true },
+    });
+    if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
+    const ticketTypes = await this.ticketTypesRepo.find({
+      where: { eventId: event.id },
       order: { priceCents: 'ASC' },
     });
     return this.buildDetail(event, ticketTypes);

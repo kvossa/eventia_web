@@ -23,7 +23,7 @@ import type { EventListItem } from '../core/models';
         <h3>{{ event().name }}</h3>
         <div class="venue">{{ event().venue.name }}</div>
         <div class="footer">
-          <span class="price">from {{ formatCents(event().fromPriceCents) }}</span>
+          <span class="price">@if (event().fromPriceCents; as price) { from {{ formatCents(price) }} } @else { Free / TBA }</span>
           <span class="cta">Details</span>
         </div>
       </div>

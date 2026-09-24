@@ -160,6 +160,10 @@ export class OrdersService {
     return this.findDetail(this.dataSource, orderId);
   }
 
+  async detailAdmin(orderId: string): Promise<OrderDetailView> {
+    return this.loadDetail(orderId);
+  }
+
   private async findDetail(
     source: DataSource | EntityManager,
     orderId: string,

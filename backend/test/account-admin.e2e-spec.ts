@@ -137,6 +137,79 @@ describe('Account & admin foundations (e2e)', () => {
     expect(copy.body.ticketTypes[0].quantitySold).toBe(0);
   });
 
+  it('admin events: all-status list + draft detail; public detail stays gated', async () => {
+    const cat = await send(app, 'post', '/api/v1/categories', adminToken, {
+      name: `E2E Cat D ${suffix}`,
+      slug: `e2e-cat-d-${suffix}`,
+    }).expect(201);
+    const org = await send(app, 'post', '/api/v1/organizers', adminToken, {
+      name: `E2E Org D ${suffix}`,
+      slug: `e2e-org-d-${suffix}`,
+    }).expect(201);
+    const ven = await send(app, 'post', '/api/v1/venues', adminToken, {
+      name: `E2E Ven D ${suffix}`,
+      city: 'Berlin',
+      address: 'Draftstr. 2',
+    }).expect(201);
+    const draft = await send(app, 'post', '/api/v1/events', adminToken, {
+      name: `E2E Draft ${suffix}`,
+      categoryId: cat.body.id,
+      organizerId: org.body.id,
+      venueId: ven.body.id,
+      dateTime: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+    }).expect(201);
+    expect(draft.body.status).toBe('draft');
+
+    await send(app, 'get', '/api/v1/admin/events', userToken).expect(403);
+    const list = await send(app, 'get', '/api/v1/admin/events?limit=100', adminToken).expect(200);
+    expect(list.body.data.some((e) => e.id === draft.body.id)).toBe(true);
+    const drafts = await send(app, 'get', '/api/v1/admin/events?status=draft&limit=100', adminToken).expect(200);
+    expect(drafts.body.data.every((e) => e.status === 'draft')).toBe(true);
+    expect(drafts.body.data.some((e) => e.id === draft.body.id)).toBe(true);
+
+    const detail = await send(app, 'get', `/api/v1/admin/events/${draft.body.id}`, adminToken).expect(200);
+    expect(detail.body.id).toBe(draft.body.id);
+    expect(detail.body.status).toBe('draft');
+    expect(detail.body.venue.name).toBe(`E2E Ven D ${suffix}`);
+    expect(detail.body.category.name).toBe(`E2E Cat D ${suffix}`);
+    expect(detail.body.organizer.name).toBe(`E2E Org D ${suffix}`);
+
+    await send(app, 'get', `/api/v1/events/${draft.body.id}`).expect(404);
+  });
+
+  it('admin catalog deletes: in-use is 409, unused succeeds', async () => {
+    const cat = await send(app, 'post', '/api/v1/categories', adminToken, {
+      name: `E2E Cat G ${suffix}`,
+      slug: `e2e-cat-g-${suffix}`,
+    }).expect(201);
+    const org = await send(app, 'post', '/api/v1/organizers', adminToken, {
+      name: `E2E Org G ${suffix}`,
+      slug: `e2e-org-g-${suffix}`,
+    }).expect(201);
+    const ven = await send(app, 'post', '/api/v1/venues', adminToken, {
+      name: `E2E Ven G ${suffix}`,
+      city: 'Berlin',
+      address: 'Guardstr. 3',
+    }).expect(201);
+    await send(app, 'post', '/api/v1/events', adminToken, {
+      name: `E2E Guard Event ${suffix}`,
+      categoryId: cat.body.id,
+      organizerId: org.body.id,
+      venueId: ven.body.id,
+      dateTime: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    }).expect(201);
+
+    const venDel = await send(app, 'delete', `/api/v1/venues/${ven.body.id}`, adminToken).expect(409);
+    expect(venDel.body.code).toBe('VENUE_IN_USE');
+    const orgDel = await send(app, 'delete', `/api/v1/organizers/${org.body.id}`, adminToken).expect(409);
+    expect(orgDel.body.code).toBe('ORGANIZER_IN_USE');
+    const catDel = await send(app, 'delete', `/api/v1/categories/${cat.body.id}`, adminToken).expect(409);
+    expect(catDel.body.code).toBe('CATEGORY_IN_USE');
+
+    const listBefore = await send(app, 'get', '/api/v1/venues', adminToken).expect(200);
+    expect(listBefore.body.some((v) => v.id === ven.body.id)).toBe(true);
+  });
+
   it('change-password: wrong current rejected, success revokes sessions', async () => {
     await send(app, 'post', '/api/v1/auth/change-password', userToken, {
       currentPassword: 'wrongpass123',
