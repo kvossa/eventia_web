@@ -1,6 +1,8 @@
 import type {
   EventAvailabilityState,
   EventStatus,
+  NotificationChannel,
+  NotificationType,
   OrderStatus,
   PaymentStatus,
   TicketStatus,
@@ -204,6 +206,8 @@ export interface ProfileView {
   name: string;
   role: UserRole;
   createdAt: string;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
 }
 
 export interface UserUpdateInput {
@@ -225,6 +229,25 @@ export interface MyOrderListItem extends OrderDetailView {}
 export interface NotificationPreferencesInput {
   emailNotifications: boolean;
   smsNotifications: boolean;
+}
+
+export interface NotificationView {
+  id: string;
+  type: NotificationType;
+  channel: NotificationChannel;
+  title: string;
+  message: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationListResponse {
+  data: NotificationView[];
+  unreadCount: number;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
 }
 
 export interface OrderListParams {

@@ -65,6 +65,13 @@ export const routes: Routes = [
     ),
   },
   {
+    path: 'my-notifications',
+    canActivate: [authGuard],
+    loadComponent: () => import('./pages/account/my-notifications').then(
+      (m) => m.MyNotificationsPage,
+    ),
+  },
+  {
     path: 'admin',
     canActivate: [authGuard, adminGuard],
     loadComponent: () => import('./pages/admin/dashboard').then((m) => m.AdminDashboardPage),

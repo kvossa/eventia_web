@@ -23,6 +23,12 @@ export class User extends BaseEntity {
   @Column({ name: 'preferred_city', type: 'varchar', length: 255, nullable: true })
   preferredCity: string | null;
 
+  @Column({ name: 'email_notifications', type: 'boolean', default: true })
+  emailNotifications: boolean;
+
+  @Column({ name: 'sms_notifications', type: 'boolean', default: true })
+  smsNotifications: boolean;
+
   @Column({ type: 'enum', enum: [...USER_ROLES], enumName: 'user_role', default: 'customer' })
   role: UserRole;
 

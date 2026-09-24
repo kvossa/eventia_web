@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConflictError } from '../common/app-error.js';
 import { User } from '../entities/user.entity.js';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 
 export interface CreateUserInput {
@@ -65,6 +66,21 @@ export class UsersService {
     if (dto.phone !== undefined) user.phone = dto.phone;
     if (dto.preferredCity !== undefined) user.preferredCity = dto.preferredCity;
     if (dto.profileImageUrl !== undefined) user.profileImageUrl = dto.profileImageUrl;
+
+    return this.usersRepository.save(user);
+  }
+
+  async updateNotificationPreferences(
+    id: string,
+    dto: UpdateNotificationPreferencesDto,
+  ): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new ConflictError('USER_NOT_FOUND', 'User not found');
+    }
+
+    if (dto.emailNotifications !== undefined) user.emailNotifications = dto.emailNotifications;
+    if (dto.smsNotifications !== undefined) user.smsNotifications = dto.smsNotifications;
 
     return this.usersRepository.save(user);
   }

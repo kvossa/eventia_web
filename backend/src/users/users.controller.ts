@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UnauthorizedError } from '../common/app-error.js';
 import { CurrentUser, type AuthUserPayload } from '../common/decorators/current-user.decorator.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { toPublicUser } from './user.mapper.js';
 import { UsersService } from './users.service.js';
@@ -27,5 +28,18 @@ export class UsersController {
   async update(@CurrentUser() user: AuthUserPayload, @Body() dto: UpdateProfileDto) {
     const updated = await this.usersService.updateProfile(user.sub, dto);
     return toPublicUser(updated);
+  }
+
+  @Patch('me/notification-preferences')
+  @ApiOperation({ summary: 'Update current user notification preferences' })
+  async updateNotificationPreferences(
+    @CurrentUser() user: AuthUserPayload,
+    @Body() dto: UpdateNotificationPreferencesDto,
+  ) {
+    const updated = await this.usersService.updateNotificationPreferences(user.sub, dto);
+    return {
+      emailNotifications: updated.emailNotifications,
+      smsNotifications: updated.smsNotifications,
+    };
   }
 }

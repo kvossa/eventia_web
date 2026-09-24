@@ -17,8 +17,10 @@ import {
   FavoriteRemoveResponse,
   FavoriteView,
   MyOrderListItem,
-  OrderDetailView,
+  NotificationListResponse,
   NotificationPreferencesInput,
+  NotificationView,
+  OrderDetailView,
   OrderListParams,
   Organizer,
   OrganizerInput,
@@ -29,6 +31,7 @@ import {
   PublicUser,
   TicketType,
   TicketTypeInput,
+  UnreadCountResponse,
   UserUpdateInput,
   Venue,
   VenueInput,
@@ -93,6 +96,22 @@ export class ApiService {
 
   updateNotificationPreferences<T = NotificationPreferencesInput>(body: NotificationPreferencesInput): Promise<T> {
     return this.patch<T>('/api/v1/users/me/notification-preferences', body);
+  }
+
+  notifications(params?: Record<string, string | number | boolean | undefined>): Promise<NotificationListResponse> {
+    return this.get<NotificationListResponse>('/api/v1/notifications', params);
+  }
+
+  unreadNotificationsCount(): Promise<UnreadCountResponse> {
+    return this.get<UnreadCountResponse>('/api/v1/notifications/unread-count');
+  }
+
+  markNotificationRead(id: string): Promise<NotificationView> {
+    return this.patch<NotificationView>(`/api/v1/notifications/${id}/read`, {});
+  }
+
+  markAllNotificationsRead(): Promise<{ updated: number }> {
+    return this.patch<{ updated: number }>('/api/v1/notifications/read-all', {});
   }
 
   adminStats(): Promise<AdminStats> {

@@ -1,7 +1,8 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { CartService } from '../core/cart.service';
+import { NotificationsService } from '../core/notifications.service';
 import { ToastService } from '../core/toast.service';
 
 @Component({
@@ -17,6 +18,12 @@ import { ToastService } from '../core/toast.service';
           <a routerLink="/my-orders" routerLinkActive="active">My Orders</a>
           <a routerLink="/my-profile" routerLinkActive="active">My Profile</a>
           <a routerLink="/my-favorites" routerLinkActive="active">My Favorites</a>
+          <a routerLink="/my-notifications" routerLinkActive="active" class="notif">
+            Notifications
+            @if (notifications.unreadCount() > 0) {
+              <span class="notif-badge" data-testid="notifications-unread-count">{{ notifications.unreadCount() }}</span>
+            }
+          </a>
           @if (auth.user()?.role === 'admin') {
             <a routerLink="/admin" routerLinkActive="active">Admin</a>
           }
@@ -58,6 +65,12 @@ import { ToastService } from '../core/toast.service';
     .nav { display: flex; gap: 16px; flex: 1; }
     .nav a { color: var(--color-text-dim); text-decoration: none; font-size: 0.92rem; padding: 6px 4px; }
     .nav a.active, .nav a:hover { color: var(--color-text); }
+    .notif { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+    .notif-badge {
+      min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px;
+      background: var(--color-accent); color: #fff; font-size: 0.68rem; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
     .actions { display: flex; align-items: center; gap: 12px; }
     .cart { position: relative; display: inline-flex; color: var(--color-text-dim); text-decoration: none; padding: 6px; }
     .cart:hover { color: var(--color-text); }
@@ -73,8 +86,19 @@ import { ToastService } from '../core/toast.service';
 export class Header implements OnInit {
   readonly auth = inject(AuthService);
   readonly cart = inject(CartService);
+  readonly notifications = inject(NotificationsService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+
+  constructor() {
+    effect(() => {
+      if (this.auth.isAuthenticated()) {
+        void this.notifications.refresh();
+      } else {
+        this.notifications.applyUnread(0);
+      }
+    });
+  }
 
   async ngOnInit(): Promise<void> {
     if (!this.cart.loaded()) {

@@ -7,6 +7,8 @@ export interface PublicUser {
   phone: string | null;
   profileImageUrl: string | null;
   preferredCity: string | null;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
   role: string;
   createdAt: string;
   updatedAt: string;
@@ -19,6 +21,8 @@ export const toPublicUser = (user: User): PublicUser => ({
   phone: user.phone,
   profileImageUrl: user.profileImageUrl,
   preferredCity: user.preferredCity,
+  emailNotifications: user.emailNotifications,
+  smsNotifications: user.smsNotifications,
   role: user.role,
   createdAt: user.createdAt.toISOString(),
   updatedAt: user.updatedAt.toISOString(),

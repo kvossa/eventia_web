@@ -28,6 +28,7 @@ describe('Account & admin foundations (e2e)', () => {
   let adminToken: string;
   let userToken: string;
   let eventId: string;
+  let ticketTypeId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -83,6 +84,7 @@ describe('Account & admin foundations (e2e)', () => {
       maxPerCustomer: 4,
     }).expect(201);
     eventId = event.body.id;
+    ticketTypeId = tt.body.id;
   });
 
   afterAll(async () => {
@@ -220,5 +222,55 @@ describe('Account & admin foundations (e2e)', () => {
       newPassword: 'newpass123',
     }).expect(200);
     expect(ok.body.success).toBe(true);
+  });
+
+  it('notification-preferences: defaults true, PATCH persists, rejects bad input', async () => {
+    const me = await send(app, 'get', '/api/v1/users/me', userToken).expect(200);
+    expect(me.body.emailNotifications).toBe(true);
+    expect(me.body.smsNotifications).toBe(true);
+
+    const updated = await send(app, 'patch', '/api/v1/users/me/notification-preferences', userToken, {
+      emailNotifications: false,
+      smsNotifications: false,
+    }).expect(200);
+    expect(updated.body.emailNotifications).toBe(false);
+    expect(updated.body.smsNotifications).toBe(false);
+
+    const meAfter = await send(app, 'get', '/api/v1/users/me', userToken).expect(200);
+    expect(meAfter.body.emailNotifications).toBe(false);
+    expect(meAfter.body.smsNotifications).toBe(false);
+
+    await send(app, 'patch', '/api/v1/users/me/notification-preferences', userToken, {
+      emailNotifications: 'nope',
+    }).expect(400);
+    await send(app, 'patch', '/api/v1/users/me/notification-preferences', userToken, {
+      unknown: true,
+    }).expect(400);
+  });
+
+  it('notifications: checkout creates purchase_confirmed, unread flows, mark read', async () => {
+    await send(app, 'post', '/api/v1/cart/items', userToken, {
+      ticketTypeId,
+      quantity: 1,
+    }).expect(201);
+    const order = await send(app, 'post', '/api/v1/checkout', userToken, {}).expect(201);
+    expect(order.body.status).toBe('confirmed');
+
+    const list = await send(app, 'get', '/api/v1/notifications', userToken).expect(200);
+    expect(Array.isArray(list.body.data)).toBe(true);
+    const found = list.body.data.find((n) => n.type === 'purchase_confirmed');
+    expect(found).toBeDefined();
+    expect(found.title).toBe('Order confirmed');
+    expect(list.body.unreadCount).toBeGreaterThanOrEqual(1);
+
+    const unread = await send(app, 'get', '/api/v1/notifications/unread-count', userToken).expect(200);
+    expect(unread.body.unreadCount).toBeGreaterThanOrEqual(1);
+
+    await send(app, 'patch', '/api/v1/notifications/read-all', userToken, {}).expect(200);
+    const after = await send(app, 'get', '/api/v1/notifications/unread-count', userToken).expect(200);
+    expect(after.body.unreadCount).toBe(0);
+
+    const read = await send(app, 'patch', `/api/v1/notifications/${found.id}/read`, userToken, {}).expect(200);
+    expect(read.body.id).toBe(found.id);
   });
 });

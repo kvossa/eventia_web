@@ -91,6 +91,35 @@ import { ToastService } from '../../core/toast.service';
             <p class="ok" data-testid="password-saved">Password updated.</p>
           }
         </form>
+
+        <form class="card card-pad" [formGroup]="prefsForm" (ngSubmit)="savePreferences()" novalidate>
+          <h2>Notification preferences</h2>
+
+          <label class="toggle" for="prefEmail">
+            <input id="prefEmail" formControlName="emailNotifications" type="checkbox" data-testid="pref-email" />
+            <span>Email notifications</span>
+          </label>
+
+          <label class="toggle" for="prefSms">
+            <input id="prefSms" formControlName="smsNotifications" type="checkbox" data-testid="pref-sms" />
+            <span>SMS notifications</span>
+          </label>
+
+          <p class="sub">In-app notifications are always on and shown in the Notifications area.</p>
+
+          <div class="actions">
+            <button
+              class="btn btn-primary"
+              type="submit"
+              [disabled]="savingPrefs()"
+              data-testid="save-preferences"
+            >{{ savingPrefs() ? 'Saving…' : 'Save preferences' }}</button>
+          </div>
+
+          @if (prefsSaved()) {
+            <p class="ok" data-testid="preferences-saved">Notification preferences updated.</p>
+          }
+        </form>
       }
     </div>
   `,
@@ -99,6 +128,8 @@ import { ToastService } from '../../core/toast.service';
     form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
     .field-label { font-size: 0.88rem; color: var(--color-text-dim); }
     .sub { color: var(--color-text-dim); font-size: 0.85rem; margin: 2px 0 10px; }
+    .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 0; font-size: 0.95rem; }
+    .toggle input { accent-color: var(--color-accent); width: 18px; height: 18px; }
     .actions { margin-top: 8px; }
     .ok {
       padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.9rem;
@@ -116,12 +147,18 @@ export class MyProfilePage implements OnInit {
     currentPassword: ['', Validators.required],
     newPassword: ['', [Validators.required, Validators.minLength(8)]],
   });
+  readonly prefsForm = new FormBuilder().group({
+    emailNotifications: [true],
+    smsNotifications: [true],
+  });
 
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly changing = signal(false);
+  readonly savingPrefs = signal(false);
   readonly saved = signal(false);
   readonly passwordSaved = signal(false);
+  readonly prefsSaved = signal(false);
   readonly createdAt = signal('');
 
   private readonly api = inject(ApiService);
@@ -132,6 +169,10 @@ export class MyProfilePage implements OnInit {
     try {
       const me = await this.api.me<ProfileView>();
       this.form.patchValue({ name: me.name, email: me.email });
+      this.prefsForm.patchValue({
+        emailNotifications: me.emailNotifications,
+        smsNotifications: me.smsNotifications,
+      });
       this.createdAt.set(me.createdAt);
     } catch (err) {
       this.toast.show('error', (err as { message?: string }).message ?? 'Could not load your profile.');
@@ -177,6 +218,23 @@ export class MyProfilePage implements OnInit {
       this.toast.show('error', (err as { message?: string }).message ?? 'Could not change your password.');
     } finally {
       this.changing.set(false);
+    }
+  }
+
+  async savePreferences(): Promise<void> {
+    this.savingPrefs.set(true);
+    this.prefsSaved.set(false);
+    try {
+      await this.api.updateNotificationPreferences({
+        emailNotifications: this.prefsForm.value.emailNotifications ?? false,
+        smsNotifications: this.prefsForm.value.smsNotifications ?? false,
+      });
+      this.prefsSaved.set(true);
+      this.toast.show('success', 'Notification preferences saved.');
+    } catch (err) {
+      this.toast.show('error', (err as { message?: string }).message ?? 'Could not save your preferences.');
+    } finally {
+      this.savingPrefs.set(false);
     }
   }
 

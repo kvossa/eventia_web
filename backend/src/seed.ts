@@ -4,10 +4,12 @@ import { AppDataSource } from './config/data-source.js';
 import { Category } from './entities/category.entity.js';
 import { Event } from './entities/event.entity.js';
 import { Favorite } from './entities/favorite.entity.js';
+import { Notification } from './entities/notification.entity.js';
 import { Organizer } from './entities/organizer.entity.js';
 import { TicketType } from './entities/ticket-type.entity.js';
 import { User } from './entities/user.entity.js';
 import { Venue } from './entities/venue.entity.js';
+import type { NotificationChannel, NotificationType } from '@eventia/shared';
 import {
   DEMO_USERS,
   SEED_CATEGORIES,
@@ -162,6 +164,74 @@ async function seedFavorites(): Promise<void> {
   }
 }
 
+interface SeedNotificationSpec {
+  email: string;
+  items: { type: NotificationType; channel: NotificationChannel; title: string; message: string | null; read: boolean }[];
+}
+
+const SEED_NOTIFICATIONS: SeedNotificationSpec[] = [
+  {
+    email: 'alice@example.com',
+    items: [
+      { type: 'ticket_reminder', channel: 'in_app', title: 'Neon Nights Festival starts tomorrow', message: 'Your tickets are ready in My Tickets.', read: false },
+      { type: 'purchase_confirmed', channel: 'in_app', title: 'Order confirmed', message: 'Thanks! Your digital tickets are in My Tickets.', read: true },
+    ],
+  },
+  {
+    email: 'sam@example.com',
+    items: [
+      { type: 'ticket_reminder', channel: 'in_app', title: 'Theatre Gala Premiere is this weekend', message: 'Gate opens 30 minutes before start.', read: false },
+      { type: 'purchase_confirmed', channel: 'in_app', title: 'Order confirmed', message: 'Thanks! Your digital tickets are in My Tickets.', read: true },
+    ],
+  },
+  {
+    email: 'mia@example.com',
+    items: [
+      { type: 'event_update', channel: 'in_app', title: 'City Sports Festival updated', message: 'Start time moved to 18:00.', read: false },
+      { type: 'purchase_confirmed', channel: 'in_app', title: 'Order confirmed', message: 'Thanks! Your digital tickets are in My Tickets.', read: true },
+    ],
+  },
+  {
+    email: 'kai@example.com',
+    items: [
+      { type: 'ticket_reminder', channel: 'in_app', title: 'Indie Nights: Live Session starts soon', message: 'Show your QR code at the entrance.', read: false },
+      { type: 'purchase_confirmed', channel: 'in_app', title: 'Order confirmed', message: 'Thanks! Your digital tickets are in My Tickets.', read: true },
+    ],
+  },
+  {
+    email: 'nina@example.com',
+    items: [
+      { type: 'purchase_confirmed', channel: 'in_app', title: 'Order confirmed', message: 'Thanks! Your digital tickets are in My Tickets.', read: false },
+      { type: 'event_update', channel: 'in_app', title: 'Neon Nights Festival updated', message: 'New headliner announced.', read: true },
+    ],
+  },
+];
+
+async function seedNotifications(): Promise<void> {
+  const userRepo = AppDataSource.getRepository(User);
+  const notifRepo = AppDataSource.getRepository(Notification);
+
+  for (const spec of SEED_NOTIFICATIONS) {
+    const user = await userRepo.findOneBy({ email: spec.email });
+    if (!user) continue;
+    for (const item of spec.items) {
+      const existing = await notifRepo.findOneBy({ userId: user.id, title: item.title });
+      if (existing) continue;
+      await notifRepo.save(
+        notifRepo.create({
+          userId: user.id,
+          type: item.type,
+          channel: item.channel,
+          title: item.title,
+          message: item.message,
+          readAt: item.read ? new Date() : null,
+        }),
+      );
+      created.notifications = (created.notifications ?? 0) + 1;
+    }
+  }
+}
+
 async function seedAll(): Promise<void> {
   await seedUsers();
 
@@ -174,6 +244,7 @@ async function seedAll(): Promise<void> {
   }
 
   await seedFavorites();
+  await seedNotifications();
 }
 
 async function main(): Promise<void> {
