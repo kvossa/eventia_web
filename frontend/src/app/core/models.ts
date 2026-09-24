@@ -220,6 +220,15 @@ export interface PasswordChangeInput {
   newPassword: string;
 }
 
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
 export interface FavoriteView extends EventListItem {
   favoritedAt: string;
 }

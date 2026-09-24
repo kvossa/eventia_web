@@ -16,6 +16,7 @@ import {
   FavoriteAddResponse,
   FavoriteRemoveResponse,
   FavoriteView,
+  ForgotPasswordInput,
   MyOrderListItem,
   NotificationListResponse,
   NotificationPreferencesInput,
@@ -29,6 +30,7 @@ import {
   PasswordChangeResponse,
   ProfileView,
   PublicUser,
+  ResetPasswordInput,
   TicketType,
   TicketTypeInput,
   UnreadCountResponse,
@@ -72,6 +74,14 @@ export class ApiService {
 
   changePassword(body: PasswordChangeInput): Promise<PasswordChangeResponse> {
     return this.post<PasswordChangeResponse>('/api/v1/auth/change-password', body);
+  }
+
+  forgotPassword(body: ForgotPasswordInput): Promise<PasswordChangeResponse> {
+    return this.post<PasswordChangeResponse>('/api/v1/auth/forgot-password', body);
+  }
+
+  resetPassword(body: ResetPasswordInput): Promise<PasswordChangeResponse> {
+    return this.post<PasswordChangeResponse>('/api/v1/auth/reset-password', body);
   }
 
   favorites<T = Paginated<FavoriteView>>(params?: Record<string, string | number | boolean | undefined>): Promise<T> {

@@ -32,6 +32,10 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { email: this.normalizeEmail(email) } });
   }
 
+  findByPasswordResetTokenHash(hash: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { passwordResetTokenHash: hash } });
+  }
+
   async create(input: CreateUserInput): Promise<User> {
     const email = this.normalizeEmail(input.email);
     const existing = await this.usersRepository.findOne({ where: { email } });

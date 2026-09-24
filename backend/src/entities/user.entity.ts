@@ -29,6 +29,12 @@ export class User extends BaseEntity {
   @Column({ name: 'sms_notifications', type: 'boolean', default: true })
   smsNotifications: boolean;
 
+  @Column({ name: 'password_reset_token_hash', type: 'varchar', length: 64, nullable: true })
+  passwordResetTokenHash: string | null;
+
+  @Column({ name: 'password_reset_expires_at', type: 'timestamptz', nullable: true })
+  passwordResetExpiresAt: Date | null;
+
   @Column({ type: 'enum', enum: [...USER_ROLES], enumName: 'user_role', default: 'customer' })
   role: UserRole;
 

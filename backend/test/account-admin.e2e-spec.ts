@@ -1,7 +1,9 @@
 import request from 'supertest';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
+import { EmailOutboxRecord } from '../src/entities/email-outbox.entity.js';
 
 const ADMIN_EMAIL = 'root@eventia.local';
 const ADMIN_PASSWORD = 'adminpass1234';
@@ -318,5 +320,68 @@ describe('Account & admin foundations (e2e)', () => {
     const confRows = (confirmed.body.csv as string).split('\r\n').slice(1).filter(Boolean);
     expect(confRows.length).toBeGreaterThan(0);
     expect(confRows.every((l) => l.split(',')[4] === 'confirmed')).toBe(true);
+  });
+
+  it('password recovery: forgot writes reset email, reset clears token and unbinds sessions', async () => {
+    const resetUser = `reset-${suffix}@example.com`;
+    await send(app, 'post', '/api/v1/auth/register', undefined, {
+      email: resetUser,
+      password: 'oldpass123',
+      name: 'E2E Reset',
+    }).expect(201);
+
+    const anonymous = await send(app, 'post', '/api/v1/auth/forgot-password', undefined, {
+      email: 'does-not-exist@example.com',
+    }).expect(200);
+    expect(anonymous.body.success).toBe(true);
+
+    await send(app, 'post', '/api/v1/auth/forgot-password', undefined, {
+      email: resetUser,
+    }).expect(200);
+
+    await send(app, 'post', '/api/v1/auth/reset-password', undefined, {
+      token: 'totally-bogus-token-value',
+      newPassword: 'newpass123',
+    })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.code).toBe('INVALID_RESET_TOKEN');
+      });
+
+    const dataSource = app.get(DataSource);
+    const outbox = dataSource.getRepository(EmailOutboxRecord);
+    const latest = await outbox.findOne({
+      where: { to: resetUser, subject: 'Reset your Eventia password' },
+      order: { createdAt: 'DESC' },
+    });
+    expect(latest).toBeDefined();
+    const token = /auth\/reset-password\?token=([^\s]+)/.exec(latest!.body)?.[1];
+    expect(token).toBeDefined();
+
+    const ok = await send(app, 'post', '/api/v1/auth/reset-password', undefined, {
+      token,
+      newPassword: 'newpass123',
+    }).expect(200);
+    expect(ok.body.success).toBe(true);
+
+    const newLogin = await send(app, 'post', '/api/v1/auth/login', undefined, {
+      email: resetUser,
+      password: 'newpass123',
+    }).expect(200);
+    expect(newLogin.body.accessToken).toBeDefined();
+
+    await send(app, 'post', '/api/v1/auth/login', undefined, {
+      email: resetUser,
+      password: 'oldpass123',
+    }).expect(401);
+
+    await send(app, 'post', '/api/v1/auth/reset-password', undefined, {
+      token,
+      newPassword: 'thirdpass123',
+    })
+      .expect(400)
+      .expect((res) => {
+        expect(res.body.code).toBe('INVALID_RESET_TOKEN');
+      });
   });
 });

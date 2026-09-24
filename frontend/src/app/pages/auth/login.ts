@@ -41,6 +41,7 @@ import { ToastService } from '../../core/toast.service';
           <button class="btn btn-primary btn-block" type="submit" [disabled]="form.invalid || busy()">
             {{ busy() ? 'Logging in…' : 'Log in' }}
           </button>
+          <a class="forgot" routerLink="/auth/forgot-password" data-testid="forgot-password-link">Forgot password?</a>
         </form>
         <p class="swap">
           No account yet? <a routerLink="/auth/register">Create one</a>
@@ -65,6 +66,7 @@ import { ToastService } from '../../core/toast.service';
       background: none; border: none; color: var(--color-text-dim); cursor: pointer;
       font-size: 0.8rem; font-weight: 600;
     }
+    .forgot { display: block; margin-top: 12px; font-size: 0.85rem; text-align: center; color: var(--color-primary); text-decoration: none; }
     .swap { margin-top: 18px; font-size: 0.9rem; color: var(--color-text-dim); text-align: center; }
   `,
 })

@@ -11,12 +11,13 @@ import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { EmailOutboxRecord } from '../entities/email-outbox.entity.js';
 
 @Global()
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([RefreshSession]),
+    TypeOrmModule.forFeature([RefreshSession, EmailOutboxRecord]),
     UsersModule,
     CartModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
