@@ -3,6 +3,7 @@ import { TICKET_STATUSES, type TicketStatus } from '@eventia/shared';
 import type { OrderItem } from './order-item.entity.js';
 import { BaseEntity } from './base.entity.js';
 import { Event } from './event.entity.js';
+import { Seat } from './seat.entity.js';
 import { TicketType } from './ticket-type.entity.js';
 import { User } from './user.entity.js';
 
@@ -51,6 +52,14 @@ export class Ticket extends BaseEntity {
 
   @Column({ name: 'seat_label', type: 'varchar', length: 100, nullable: true })
   seatLabel: string | null;
+
+  @ManyToOne(() => Seat, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'seat_id' })
+  seat: Seat | null;
+
+  @Index()
+  @Column({ name: 'seat_id', type: 'uuid', nullable: true })
+  seatId: string | null;
 
   @Column({ name: 'price_paid_cents', type: 'integer' })
   pricePaidCents: number;

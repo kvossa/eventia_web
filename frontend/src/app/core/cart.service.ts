@@ -20,8 +20,12 @@ export class CartService {
     await this.load();
   }
 
-  async add(ticketTypeId: string, quantity: number): Promise<Cart> {
-    const cart = await this.api.post<Cart>('/cart/items', { ticketTypeId, quantity });
+  async add(ticketTypeId: string, quantity: number, seatIds?: string[]): Promise<Cart> {
+    const cart = await this.api.post<Cart>('/cart/items', {
+      ticketTypeId,
+      quantity,
+      ...(seatIds && seatIds.length ? { seatIds } : {}),
+    });
     this.apply(cart);
     return cart;
   }

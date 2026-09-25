@@ -78,6 +78,7 @@ export interface EventListItem {
   maxCapacity: number | null;
   status: EventStatus;
   featured: boolean;
+  reservedSeating: boolean;
   imageUrl: string | null;
   ageRestriction: string | null;
   accessibilityInfo: string | null;
@@ -100,6 +101,7 @@ export interface TicketType {
   salesEndsAt: string | null;
   isVisible: boolean;
   maxPerCustomer: number | null;
+  sectionIds?: string[];
 }
 
 export interface EventDetail extends EventListItem {
@@ -116,6 +118,11 @@ export interface CartLineEvent {
   imageUrl: string | null;
 }
 
+export interface CartLineSeat {
+  seatId: string;
+  seatLabel: string;
+}
+
 export interface CartLine {
   id: string;
   ticketTypeId: string;
@@ -124,6 +131,7 @@ export interface CartLine {
   subtotalCents: number;
   event: CartLineEvent;
   ticketType: TicketType;
+  seats: CartLineSeat[];
 }
 
 export interface Cart {
@@ -341,6 +349,7 @@ export interface EventFormValue {
   city?: string;
   address?: string;
   featured?: boolean;
+  reservedSeating?: boolean;
   imageUrl?: string;
 }
 
@@ -365,6 +374,40 @@ export interface VenueInput {
   imageUrl?: string | null;
 }
 
+export interface SeatView {
+  id: string;
+  number: number;
+  isAccessible: boolean;
+}
+
+export interface RowView {
+  id: string;
+  label: string;
+  seats: SeatView[];
+}
+
+export interface SectionView {
+  id: string;
+  name: string;
+  sortOrder: number;
+  rows: RowView[];
+}
+
+export interface VenueLayoutView {
+  sections: SectionView[];
+}
+
+export interface SectionInput {
+  name: string;
+  sortOrder?: number;
+}
+
+export interface RowDraftInput {
+  label: string;
+  seatCount: number;
+  accessibleNumbers?: number[];
+}
+
 export interface OrganizerInput {
   name: string;
   slug: string;
@@ -377,4 +420,35 @@ export interface CategoryInput {
   name: string;
   slug: string;
   description?: string | null;
+}
+
+export interface EventSeatMapTicketType {
+  id: string;
+  name: string;
+  priceCents: number;
+  sectionIds: string[];
+}
+
+export interface EventSeatMapSeat {
+  id: string;
+  number: number;
+  isAccessible: boolean;
+  occupied: boolean;
+}
+
+export interface EventSeatMapRow {
+  id: string;
+  label: string;
+  seats: EventSeatMapSeat[];
+}
+
+export interface EventSeatMapSection {
+  id: string;
+  name: string;
+  rows: EventSeatMapRow[];
+}
+
+export interface EventSeatMap {
+  ticketTypes: EventSeatMapTicketType[];
+  sections: EventSeatMapSection[];
 }

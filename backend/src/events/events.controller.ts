@@ -23,6 +23,12 @@ export class EventsController {
     return this.eventsService.detail(id);
   }
 
+  @Get(':id/seat-map')
+  @ApiOperation({ summary: 'Seat map of a reserved-seating event (public)' })
+  seatMap(@Param('id') id: string) {
+    return this.eventsService.getSeatMap(id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')

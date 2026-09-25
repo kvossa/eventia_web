@@ -36,23 +36,32 @@ import { ToastService } from '../../core/toast.service';
                     <span class="date">{{ formatDateTime(item.event.dateTime) }}</span>
                   </div>
                   <p class="tt-name">{{ item.ticketType.name }}</p>
+                  @if (item.seats.length > 0) {
+                    <ul class="seat-list" data-testid="cart-seats">
+                      @for (seat of item.seats; track seat.seatId) {
+                        <li>{{ seat.seatLabel }}</li>
+                      }
+                    </ul>
+                  }
                   <p class="unit">{{ formatCents(item.unitPriceCents) }} each</p>
                 </div>
                 <div class="line-controls">
                   <div class="qty">
-                    <button
-                      class="btn btn-ghost btn-sm"
-                      type="button"
-                      [disabled]="busy()"
-                      (click)="change(item.id, item.quantity - 1)"
-                    >−</button>
-                    <span class="qty-val" data-testid="item-qty">{{ item.quantity }}</span>
-                    <button
-                      class="btn btn-ghost btn-sm"
-                      type="button"
-                      [disabled]="busy() || item.quantity >= maxFor(item)"
-                      (click)="change(item.id, item.quantity + 1)"
-                    >+</button>
+                    @if (item.seats.length === 0) {
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="change(item.id, item.quantity - 1)"
+                      >−</button>
+                      <span class="qty-val" data-testid="item-qty">{{ item.quantity }}</span>
+                      <button
+                        class="btn btn-ghost btn-sm"
+                        type="button"
+                        [disabled]="busy() || item.quantity >= maxFor(item)"
+                        (click)="change(item.id, item.quantity + 1)"
+                      >+</button>
+                    }
                     <button
                       class="btn btn-ghost btn-sm remove"
                       type="button"
@@ -93,6 +102,8 @@ import { ToastService } from '../../core/toast.service';
     .line-main > a { text-decoration: none; color: inherit; }
     .date { color: var(--color-text-dim); font-size: 0.85rem; }
     .tt-name { margin: 8px 0 2px; font-weight: 600; }
+    .seat-list { list-style: none; margin: 6px 0 2px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+    .seat-list li { font-size: 0.8rem; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 999px; padding: 2px 10px; }
     .unit { margin: 0; color: var(--color-text-dim); font-size: 0.85rem; }
     .line-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; justify-content: center; }
     .qty { display: flex; align-items: center; gap: 8px; }

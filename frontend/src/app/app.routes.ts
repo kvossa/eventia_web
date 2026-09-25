@@ -125,6 +125,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/admin/venues').then((m) => m.AdminVenuesPage),
   },
   {
+    path: 'admin/venues/:id/layout',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./pages/admin/venue-layout').then((m) => m.AdminVenueLayoutPage),
+  },
+  {
     path: 'admin/organizers',
     canActivate: [authGuard, adminGuard],
     loadComponent: () => import('./pages/admin/organizers').then((m) => m.AdminOrganizersPage),

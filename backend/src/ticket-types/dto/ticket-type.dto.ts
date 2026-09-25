@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayUnique,
+  IsArray,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -54,6 +56,13 @@ export class CreateTicketTypeDto {
   @Min(1)
   @Max(99)
   maxPerCustomer?: number;
+}
+
+export class TicketTypeSectionsDto {
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  sectionIds: string[];
 }
 
 export class UpdateTicketTypeDto {

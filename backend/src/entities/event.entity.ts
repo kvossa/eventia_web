@@ -70,6 +70,9 @@ export class Event extends BaseEntity {
   @Column({ type: 'boolean', default: false })
   featured: boolean;
 
+  @Column({ name: 'reserved_seating', type: 'boolean', default: false })
+  reservedSeating: boolean;
+
   @Column({ name: 'image_url', type: 'varchar', length: 500, nullable: true })
   imageUrl: string | null;
 

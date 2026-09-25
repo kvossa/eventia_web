@@ -39,7 +39,7 @@ export class CartController {
   ) {
     const cart = await this.cartService.getOrCreate(this.readCartId(req), this.readUserId(req));
     this.ensureCookie(res, cart.id);
-    return this.cartService.addItem(cart, dto.ticketTypeId, dto.quantity);
+    return this.cartService.addItem(cart, dto.ticketTypeId, dto.quantity, dto.seatIds ?? []);
   }
 
   @Patch('items/:itemId')

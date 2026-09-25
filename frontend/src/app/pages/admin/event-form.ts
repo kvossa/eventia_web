@@ -108,6 +108,12 @@ import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../c
                 Featured event
               </label>
             </div>
+            <div class="form-field check">
+              <label class="check-label">
+                <input type="checkbox" name="reservedSeating" [(ngModel)]="value.reservedSeating" data-testid="event-form-reservedSeating" />
+                Reserved seating (venue seat layout)
+              </label>
+            </div>
           </div>
 
           <div class="actions">
@@ -211,6 +217,7 @@ export class AdminEventFormPage {
     if (v.address?.trim()) out.address = v.address.trim();
     if (v.imageUrl?.trim()) out.imageUrl = v.imageUrl.trim();
     if (v.featured !== undefined) out.featured = v.featured;
+    if (v.reservedSeating !== undefined) out.reservedSeating = v.reservedSeating;
     return out;
   }
 
@@ -230,6 +237,7 @@ export class AdminEventFormPage {
       city: event.city ?? '',
       address: event.address ?? '',
       featured: event.featured ?? false,
+      reservedSeating: event.reservedSeating ?? false,
       imageUrl: event.imageUrl ?? '',
     };
   }
@@ -250,6 +258,7 @@ export class AdminEventFormPage {
       city: '',
       address: '',
       featured: false,
+      reservedSeating: false,
       imageUrl: '',
     };
   }

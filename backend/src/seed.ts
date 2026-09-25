@@ -6,7 +6,11 @@ import { Event } from './entities/event.entity.js';
 import { Favorite } from './entities/favorite.entity.js';
 import { Notification } from './entities/notification.entity.js';
 import { Organizer } from './entities/organizer.entity.js';
+import { Seat } from './entities/seat.entity.js';
+import { Section } from './entities/section.entity.js';
+import { SeatRow } from './entities/seat-row.entity.js';
 import { TicketType } from './entities/ticket-type.entity.js';
+import { TicketTypeSection } from './entities/ticket-type-section.entity.js';
 import { User } from './entities/user.entity.js';
 import { Venue } from './entities/venue.entity.js';
 import type { NotificationChannel, NotificationType } from '@eventia/shared';
@@ -91,6 +95,37 @@ async function seedVenues(): Promise<Map<string, Venue>> {
 
 const toDate = (inDays: number): Date => new Date(Date.now() + inDays * DAY_MS);
 
+async function ensureRow(
+  sectionId: string,
+  label: string,
+  seatCount: number,
+  accessibleNumbers: number[],
+): Promise<void> {
+  const rowsRepo = AppDataSource.getRepository(SeatRow);
+  const seatsRepo = AppDataSource.getRepository(Seat);
+  const row = await rowsRepo.save(rowsRepo.create({ sectionId, label }));
+  const accessible = new Set(accessibleNumbers);
+  const seats: { rowId: string; number: number; isAccessible: boolean }[] = [];
+  for (let n = 1; n <= seatCount; n++) {
+    seats.push({ rowId: row.id, number: n, isAccessible: accessible.has(n) });
+  }
+  await seatsRepo.save(seatsRepo.create(seats));
+}
+
+async function seedVenueLayouts(): Promise<void> {
+  const venue = await AppDataSource.getRepository(Venue).findOneBy({ name: 'Grand Arena' });
+  if (!venue) return;
+  const sectionsRepo = AppDataSource.getRepository(Section);
+  if ((await sectionsRepo.count({ where: { venueId: venue.id } })) > 0) return;
+
+  const floor = await sectionsRepo.save(sectionsRepo.create({ venueId: venue.id, name: 'Floor', sortOrder: 0 }));
+  await ensureRow(floor.id, 'A', 12, [1]);
+  await ensureRow(floor.id, 'B', 10, []);
+  const balcony = await sectionsRepo.save(sectionsRepo.create({ venueId: venue.id, name: 'Balcony', sortOrder: 1 }));
+  await ensureRow(balcony.id, '1', 8, []);
+  created.layouts = 1;
+}
+
 async function seedEvent(
   ev: SeedEvent,
   categories: Map<string, Category>,
@@ -119,6 +154,7 @@ async function seedEvent(
       ageRestriction: ev.ageRestriction ?? null,
       accessibilityInfo: null,
       featured: ev.featured ?? false,
+      reservedSeating: ev.reservedSeating ?? false,
       imageUrl: ev.imageUrl ?? null,
       status: ev.status,
     }),
@@ -126,8 +162,13 @@ async function seedEvent(
   created.events = (created.events ?? 0) + 1;
 
   const ttRepo = AppDataSource.getRepository(TicketType);
+  const ttSectionRepo = AppDataSource.getRepository(TicketTypeSection);
+  const sectionsRepo = AppDataSource.getRepository(Section);
+  const sectionsByVenue = ev.reservedSeating
+    ? await sectionsRepo.find({ where: { venueId: venue.id } })
+    : [];
   for (const tt of ev.ticketTypes) {
-    await ttRepo.save(
+    const saved = await ttRepo.save(
       ttRepo.create({
         eventId: event.id,
         name: tt.name,
@@ -142,6 +183,17 @@ async function seedEvent(
       }),
     );
     created.ticketTypes = (created.ticketTypes ?? 0) + 1;
+
+    if (ev.reservedSeating && tt.sections) {
+      const bound = sectionsByVenue.filter((section) => tt.sections?.includes(section.name));
+      if (bound.length > 0) {
+        await ttSectionRepo.save(
+          bound.map((section) =>
+            ttSectionRepo.create({ ticketTypeId: saved.id, sectionId: section.id }),
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -238,6 +290,7 @@ async function seedAll(): Promise<void> {
   const categories = await seedCategories();
   const organizers = await seedOrganizers();
   const venues = await seedVenues();
+  await seedVenueLayouts();
 
   for (const ev of SEED_EVENTS) {
     await seedEvent(ev, categories, organizers, venues);

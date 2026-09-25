@@ -85,6 +85,10 @@ export class CreateEventDto {
   featured?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  reservedSeating?: boolean;
+
+  @IsOptional()
   @IsString()
   @MaxLength(1000)
   imageUrl?: string;
@@ -160,6 +164,10 @@ export class UpdateEventDto {
   @IsOptional()
   @IsBoolean()
   featured?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  reservedSeating?: boolean;
 
   @IsOptional()
   @IsString()

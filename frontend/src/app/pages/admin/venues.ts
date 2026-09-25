@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { AdminNav } from '../../components/admin-nav';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
@@ -8,7 +9,7 @@ import { Venue, VenueInput } from '../../core/models';
 
 @Component({
   selector: 'app-admin-venues',
-  imports: [FormsModule, AdminNav, Loading],
+  imports: [FormsModule, RouterLink, AdminNav, Loading],
   template: `
     <div class="page">
       <h1 class="page-title">Venues</h1>
@@ -44,6 +45,7 @@ import { Venue, VenueInput } from '../../core/models';
                 } @else {
                   <button type="button" class="link-btn" (click)="startEdit(v)">Edit</button>
                 }
+                <a class="link-btn" [routerLink]="['/admin/venues', v.id, 'layout']">Seat layout</a>
                 <button type="button" class="link-btn danger" (click)="remove(v)">Delete</button>
               </div>
             </div>

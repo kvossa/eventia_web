@@ -2,11 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Paginated, EventAvailability, EventStatus } from '@eventia/shared';
 import { In, Repository } from 'typeorm';
-import { ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
+import { AppError, ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
 import { Category } from '../entities/category.entity.js';
 import { Event } from '../entities/event.entity.js';
 import { Organizer } from '../entities/organizer.entity.js';
+import { Seat } from '../entities/seat.entity.js';
+import { SeatRow } from '../entities/seat-row.entity.js';
+import { Section } from '../entities/section.entity.js';
+import { Ticket } from '../entities/ticket.entity.js';
 import { TicketType } from '../entities/ticket-type.entity.js';
+import { TicketTypeSection } from '../entities/ticket-type-section.entity.js';
 import { Venue } from '../entities/venue.entity.js';
 import { computeAvailability, isSalesOpen } from './availability.service.js';
 import { AdminEventQueryDto, CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
@@ -36,6 +41,16 @@ export class EventsService {
     private readonly organizersRepo: Repository<Organizer>,
     @InjectRepository(Venue)
     private readonly venuesRepo: Repository<Venue>,
+    @InjectRepository(Section)
+    private readonly sectionsRepo: Repository<Section>,
+    @InjectRepository(TicketTypeSection)
+    private readonly ticketTypeSectionsRepo: Repository<TicketTypeSection>,
+    @InjectRepository(SeatRow)
+    private readonly seatRowsRepo: Repository<SeatRow>,
+    @InjectRepository(Seat)
+    private readonly seatsRepo: Repository<Seat>,
+    @InjectRepository(Ticket)
+    private readonly ticketsRepo: Repository<Ticket>,
   ) {}
 
   async list(query: EventQueryDto): Promise<Paginated<EventListItem>> {
@@ -128,6 +143,7 @@ export class EventsService {
       where: { eventId: event.id, isVisible: true },
       order: { priceCents: 'ASC' },
     });
+    await this.attachSectionIds(event, ticketTypes);
     return this.buildDetail(event, ticketTypes);
   }
 
@@ -141,12 +157,97 @@ export class EventsService {
       where: { eventId: event.id },
       order: { priceCents: 'ASC' },
     });
+    await this.attachSectionIds(event, ticketTypes);
     return this.buildDetail(event, ticketTypes);
+  }
+
+  async getSeatMap(id: string): Promise<unknown> {
+    const event = await this.eventsRepo.findOne({ where: { id, status: 'published' } });
+    if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
+    if (!event.reservedSeating) {
+      throw new AppError(
+        'EVENT_NOT_RESERVED',
+        'This event does not use reserved seating',
+        400,
+      );
+    }
+
+    const ticketTypes = await this.ticketTypesRepo.find({
+      where: { eventId: event.id, isVisible: true },
+      order: { priceCents: 'ASC' },
+    });
+    await this.attachSectionIds(event, ticketTypes);
+
+    const sections = await this.sectionsRepo.find({
+      where: { venueId: event.venueId },
+      order: { sortOrder: 'ASC', name: 'ASC' },
+    });
+    const rows = await this.seatRowsRepo.find({
+      where: { sectionId: In(sections.map((section) => section.id)) },
+      order: { createdAt: 'ASC' },
+    });
+    const seats = await this.seatsRepo.find({
+      where: { rowId: In(rows.map((row) => row.id)) },
+      order: { number: 'ASC' },
+    });
+
+    const occupiedRows = await this.ticketsRepo
+      .createQueryBuilder('ticket')
+      .select('ticket.seatId', 'seatId')
+      .where('ticket.eventId = :eventId', { eventId: event.id })
+      .andWhere('ticket.seatId IS NOT NULL')
+      .andWhere('ticket.status NOT IN (:...excluded)', { excluded: ['refunded', 'cancelled'] })
+      .getRawMany<{ seatId: string }>();
+    const occupied = new Set(occupiedRows.map((row) => row.seatId));
+
+    return {
+      ticketTypes: ticketTypes.map((tt) => ({
+        id: tt.id,
+        name: tt.name,
+        priceCents: tt.priceCents,
+        sectionIds: (tt as TicketType & { sectionIds?: string[] }).sectionIds ?? [],
+      })),
+      sections: sections.map((section) => ({
+        id: section.id,
+        name: section.name,
+        rows: rows
+          .filter((row) => row.sectionId === section.id)
+          .map((row) => ({
+            id: row.id,
+            label: row.label,
+            seats: seats
+              .filter((seat) => seat.rowId === row.id)
+              .map((seat) => ({
+                id: seat.id,
+                number: seat.number,
+                isAccessible: seat.isAccessible,
+                occupied: occupied.has(seat.id),
+              })),
+          })),
+      })),
+    };
+  }
+
+  private async attachSectionIds(event: Event, ticketTypes: TicketType[]): Promise<void> {
+    if (!event.reservedSeating || ticketTypes.length === 0) return;
+    const bindings = await this.ticketTypeSectionsRepo.find({
+      where: { ticketTypeId: In(ticketTypes.map((tt) => tt.id)) },
+    });
+    const byType = new Map<string, string[]>();
+    for (const binding of bindings) {
+      const list = byType.get(binding.ticketTypeId) ?? [];
+      list.push(binding.sectionId);
+      byType.set(binding.ticketTypeId, list);
+    }
+    for (const tt of ticketTypes) {
+      (tt as TicketType & { sectionIds: string[] }).sectionIds = byType.get(tt.id) ?? [];
+    }
   }
 
   async create(dto: CreateEventDto): Promise<Event> {
     await this.assertReferencesExist(dto.categoryId, dto.organizerId, dto.venueId);
     const venue = await this.venuesRepo.findOne({ where: { id: dto.venueId } });
+    if (dto.reservedSeating) await this.assertVenueHasLayout(dto.venueId);
     const event = this.eventsRepo.create({
       name: dto.name,
       description: dto.description ?? null,
@@ -162,10 +263,22 @@ export class EventsService {
       city: dto.city ?? venue?.city ?? 'TBA',
       address: dto.address ?? venue?.address ?? 'TBA',
       featured: dto.featured ?? false,
+      reservedSeating: dto.reservedSeating ?? false,
       imageUrl: dto.imageUrl ?? null,
       status: 'draft',
     });
     return this.eventsRepo.save(event);
+  }
+
+  private async assertVenueHasLayout(venueId: string): Promise<void> {
+    const sectionCount = await this.sectionsRepo.count({ where: { venueId } });
+    if (sectionCount === 0) {
+      throw new AppError(
+        'RESERVED_SEATING_NEEDS_LAYOUT',
+        'Reserved seating requires the venue to have a seat layout',
+        400,
+      );
+    }
   }
 
   async update(id: string, dto: UpdateEventDto): Promise<Event> {
@@ -190,6 +303,8 @@ export class EventsService {
     if (dto.city !== undefined) event.city = dto.city;
     if (dto.address !== undefined) event.address = dto.address;
     if (dto.featured !== undefined) event.featured = dto.featured;
+    if (dto.reservedSeating !== undefined) event.reservedSeating = dto.reservedSeating;
+    if (event.reservedSeating) await this.assertVenueHasLayout(event.venueId);
     if (dto.imageUrl !== undefined) event.imageUrl = dto.imageUrl;
 
     return this.eventsRepo.save(event);
@@ -230,6 +345,7 @@ export class EventsService {
       city: event.city,
       address: event.address,
       featured: false,
+      reservedSeating: event.reservedSeating,
       imageUrl: event.imageUrl,
       status: 'draft',
     });

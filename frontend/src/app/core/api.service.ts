@@ -13,6 +13,7 @@ import {
   EventDetail,
   EventFormValue,
   EventListItem,
+  EventSeatMap,
   FavoriteAddResponse,
   FavoriteRemoveResponse,
   FavoriteView,
@@ -31,12 +32,17 @@ import {
   ProfileView,
   PublicUser,
   ResetPasswordInput,
+  RowDraftInput,
+  RowView,
+  SectionInput,
+  SectionView,
   TicketType,
   TicketTypeInput,
   UnreadCountResponse,
   UserUpdateInput,
   Venue,
   VenueInput,
+  VenueLayoutView,
 } from './models';
 import type { OrderStatus, UserRole } from '@eventia/shared';
 
@@ -58,6 +64,10 @@ export class ApiService {
 
   patch<T>(path: string, body: unknown): Promise<T> {
     return this.request(() => lastValueFrom(this.http.patch<T>(this.url(path), body)));
+  }
+
+  put<T>(path: string, body: unknown): Promise<T> {
+    return this.request(() => lastValueFrom(this.http.put<T>(this.url(path), body)));
   }
 
   delete<T>(path: string): Promise<T> {
@@ -182,6 +192,34 @@ export class ApiService {
     return this.delete<void>(`/api/v1/venues/${id}`);
   }
 
+  venueLayout(id: string): Promise<VenueLayoutView> {
+    return this.get<VenueLayoutView>(`/api/v1/venues/${id}/layout`);
+  }
+
+  sectionCreate(venueId: string, body: SectionInput): Promise<SectionView> {
+    return this.post<SectionView>(`/api/v1/admin/venues/${venueId}/sections`, body);
+  }
+
+  sectionUpdate(id: string, body: SectionInput): Promise<SectionView> {
+    return this.patch<SectionView>(`/api/v1/admin/venues/sections/${id}`, body);
+  }
+
+  sectionRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/admin/venues/sections/${id}`);
+  }
+
+  rowCreate(sectionId: string, body: RowDraftInput): Promise<RowView> {
+    return this.post<RowView>(`/api/v1/admin/venues/sections/${sectionId}/rows`, body);
+  }
+
+  rowUpdate(id: string, body: RowDraftInput): Promise<RowView> {
+    return this.patch<RowView>(`/api/v1/admin/venues/rows/${id}`, body);
+  }
+
+  rowRemove(id: string): Promise<void> {
+    return this.delete<void>(`/api/v1/admin/venues/rows/${id}`);
+  }
+
   organizerCreate(body: OrganizerInput): Promise<Organizer> {
     return this.post<Organizer>('/api/v1/organizers', body);
   }
@@ -267,6 +305,16 @@ export class ApiService {
 
   ticketTypeRemove(id: string): Promise<void> {
     return this.delete<void>(`/api/v1/ticket-types/${id}`);
+  }
+
+  ticketTypeSections(id: string, sectionIds: string[]): Promise<{ id: string; sectionIds: string[] }> {
+    return this.put<{ id: string; sectionIds: string[] }>(`/api/v1/ticket-types/${id}/sections`, {
+      sectionIds,
+    });
+  }
+
+  eventSeatMap(id: string): Promise<EventSeatMap> {
+    return this.get<EventSeatMap>(`/api/v1/events/${id}/seat-map`);
   }
 
   private async request<T>(run: () => Promise<T>): Promise<T> {

@@ -39,6 +39,7 @@ export interface SeedTicketType {
   salesEndsInDays?: number | null;
   maxPerCustomer?: number;
   isVisible?: boolean;
+  sections?: string[];
 }
 
 export interface SeedEvent {
@@ -55,6 +56,7 @@ export interface SeedEvent {
   ageRestriction?: string;
   city?: string;
   address?: string;
+  reservedSeating?: boolean;
   ticketTypes: SeedTicketType[];
 }
 
@@ -327,6 +329,36 @@ const SEED_EVENTS: SeedEvent[] = [
         quantity: 5000,
         quantitySold: 5000,
         maxPerCustomer: 8,
+      },
+    ],
+  },
+  {
+    name: 'Symphony Under Stars',
+    description: 'An open-air classical evening with the Aurora Philharmonic under a summer sky.',
+    categorySlug: 'concerts',
+    organizerSlug: 'aurora-presents',
+    venueName: 'Grand Arena',
+    inDays: 18,
+    status: 'published',
+    imageUrl: 'https://picsum.photos/seed/symphony-stars/1200/600',
+    maxCapacity: 30,
+    reservedSeating: true,
+    ticketTypes: [
+      {
+        name: 'Orchestra',
+        description: 'Reserved seats on the Grand Arena floor',
+        priceCents: 4500,
+        quantity: 22,
+        maxPerCustomer: 4,
+        sections: ['Floor'],
+      },
+      {
+        name: 'Balcony',
+        description: 'Reserved seats in the Grand Arena balcony',
+        priceCents: 2500,
+        quantity: 8,
+        maxPerCustomer: 4,
+        sections: ['Balcony'],
       },
     ],
   },

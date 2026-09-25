@@ -1,19 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, In, QueryFailedError } from 'typeorm';
 import type { TicketQrPayload } from '@eventia/shared';
-import { ValidationError } from '../common/app-error.js';
+import { ConflictError, ValidationError } from '../common/app-error.js';
 import { generateOrderNumber, generateTicketUniqueId } from '../common/ids.js';
 import { Cart } from '../entities/cart.entity.js';
 import { CartItem } from '../entities/cart-item.entity.js';
+import { CartLineSeat, CartService, CartWithLines } from '../cart/cart.service.js';
 import { EmailOutboxRecord } from '../entities/email-outbox.entity.js';
 import { Event } from '../entities/event.entity.js';
 import { Notification } from '../entities/notification.entity.js';
 import { Order } from '../entities/order.entity.js';
 import { OrderItem } from '../entities/order-item.entity.js';
 import { Payment } from '../entities/payment.entity.js';
+import { Seat } from '../entities/seat.entity.js';
 import { Ticket } from '../entities/ticket.entity.js';
 import { TicketType } from '../entities/ticket-type.entity.js';
-import { CartService, CartWithLines } from '../cart/cart.service.js';
+import { TicketTypeSection } from '../entities/ticket-type-section.entity.js';
 import { CheckoutDto } from './dto/checkout.dto.js';
 import { OrderDetailView, OrderWithRelations, serializeOrder } from '../orders/order.serializer.js';
 
@@ -26,6 +28,8 @@ interface PricedLine {
   eventDate: Date;
   venueName: string | null;
   ticketTypeName: string;
+  reserved: boolean;
+  seats: CartLineSeat[] | null;
 }
 
 @Injectable()
@@ -83,17 +87,32 @@ export class CheckoutService {
         );
 
         const tickets: Ticket[] = [];
-        for (let i = 0; i < line.quantity; i++) {
-          tickets.push(this.buildTicket(line, item, order.id, userId));
+        if (line.reserved && line.seats) {
+          for (const seat of line.seats) {
+            tickets.push(this.buildTicket(line, item, order.id, userId, seat.seatId, seat.seatLabel));
+          }
+        } else {
+          for (let i = 0; i < line.quantity; i++) {
+            tickets.push(this.buildTicket(line, item, order.id, userId, null, null));
+          }
         }
-        await em.getRepository(Ticket).save(tickets);
+        try {
+          await em.getRepository(Ticket).save(tickets);
+        } catch (error) {
+          if (error instanceof QueryFailedError) {
+            throw new ConflictError('SEAT_TAKEN', 'One or more selected seats were just taken');
+          }
+          throw error;
+        }
 
-        const tt = await em.getRepository(TicketType).findOne({
-          where: { id: line.ticketTypeId },
-        });
-        if (!tt) throw new ValidationError('A ticket type in your cart no longer exists');
-        tt.quantitySold += line.quantity;
-        await em.getRepository(TicketType).save(tt);
+        if (!line.reserved) {
+          const tt = await em.getRepository(TicketType).findOne({
+            where: { id: line.ticketTypeId },
+          });
+          if (!tt) throw new ValidationError('A ticket type in your cart no longer exists');
+          tt.quantitySold += line.quantity;
+          await em.getRepository(TicketType).save(tt);
+        }
       }
 
       await em.getRepository(Payment).save(
@@ -151,7 +170,17 @@ export class CheckoutService {
         .findOne({ where: { id: tt.eventId }, relations: { venue: true } });
       if (!event) throw new ValidationError('The event for a ticket type in your cart no longer exists');
 
-      this.assertSellable(tt, event, line.quantity);
+      this.assertSellable(tt, event, line.quantity, event.reservedSeating);
+
+      let seats: CartLineSeat[] | null = null;
+      if (event.reservedSeating) {
+        if (!line.seats || line.seats.length === 0) {
+          throw new ValidationError('Seat selection is required for a reserved-seating event');
+        }
+        seats = await this.assertSeatsInTxn(em, tt, event.id, line.seats);
+      } else if (line.seats && line.seats.length > 0) {
+        throw new ValidationError('A general-admission line cannot carry seats');
+      }
 
       priced.push({
         eventId: event.id,
@@ -162,12 +191,69 @@ export class CheckoutService {
         eventDate: event.dateTime,
         venueName: event.venue ? `${event.venue.name}, ${event.venue.city}` : null,
         ticketTypeName: tt.name,
+        reserved: event.reservedSeating,
+        seats,
       });
     }
     return priced;
   }
 
-  private assertSellable(ticketType: TicketType, event: Event, quantity: number): void {
+  private async assertSeatsInTxn(
+    em: EntityManager,
+    ticketType: TicketType,
+    eventId: string,
+    seats: CartLineSeat[],
+  ): Promise<CartLineSeat[]> {
+    const seatIds = [...new Set(seats.map((seat) => seat.seatId))];
+    const loaded = await em.getRepository(Seat).find({
+      where: { id: In(seatIds) },
+      relations: { row: { section: true } },
+    });
+    if (loaded.length !== seatIds.length) {
+      throw new ConflictError('SEAT_TAKEN', 'A selected seat no longer exists');
+    }
+
+    const sections = [...new Set(loaded.map((seat) => seat.row.section.id))];
+    const bound = await em.getRepository(TicketTypeSection).find({
+      where: { ticketTypeId: ticketType.id, sectionId: In(sections) },
+    });
+    const boundSections = new Set(bound.map((b) => b.sectionId));
+    for (const sectionId of sections) {
+      if (!boundSections.has(sectionId)) {
+        throw new ConflictError('SEAT_TAKEN', 'A selected seat is no longer available for this ticket type');
+      }
+    }
+
+    const occupied = new Set(
+      (
+        await em
+          .getRepository(Ticket)
+          .createQueryBuilder('ticket')
+          .select('ticket.seatId', 'seatId')
+          .where('ticket.eventId = :eventId', { eventId })
+          .andWhere('ticket.seatId IN (:...seatIds)', { seatIds })
+          .andWhere('ticket.status NOT IN (:...excluded)', { excluded: ['refunded', 'cancelled'] })
+          .getRawMany<{ seatId: string }>()
+      ).map((row) => row.seatId),
+    );
+    for (const seatId of seatIds) {
+      if (occupied.has(seatId)) {
+        throw new ConflictError('SEAT_TAKEN', 'One or more selected seats were just taken');
+      }
+    }
+
+    return loaded.map((seat) => ({
+      seatId: seat.id,
+      seatLabel: `${seat.row.section.name} \u00b7 ${seat.row.label} \u00b7 ${seat.number}`,
+    }));
+  }
+
+  private assertSellable(
+    ticketType: TicketType,
+    event: Event,
+    quantity: number,
+    reserved = false,
+  ): void {
     if (!ticketType.isVisible) {
       throw new ValidationError('A ticket type in your cart is no longer available');
     }
@@ -181,9 +267,11 @@ export class CheckoutService {
     if (ticketType.salesEndsAt && ticketType.salesEndsAt.getTime() < now) {
       throw new ValidationError('Sales have ended for a ticket type in your cart');
     }
-    const remaining = ticketType.quantity - ticketType.quantitySold;
-    if (quantity > remaining) {
-      throw new ValidationError('Not enough tickets available for a ticket type in your cart');
+    if (!reserved) {
+      const remaining = ticketType.quantity - ticketType.quantitySold;
+      if (quantity > remaining) {
+        throw new ValidationError('Not enough tickets available for a ticket type in your cart');
+      }
     }
     if (ticketType.maxPerCustomer !== null && quantity > ticketType.maxPerCustomer) {
       throw new ValidationError(
@@ -197,6 +285,8 @@ export class CheckoutService {
     item: OrderItem,
     orderId: string,
     userId: string,
+    seatId: string | null,
+    seatLabel: string | null,
   ): Ticket {
     const uniqueId = generateTicketUniqueId();
     const payload: TicketQrPayload = {
@@ -206,7 +296,7 @@ export class CheckoutService {
       d: line.eventDate.toISOString(),
       vn: line.venueName ?? 'TBA',
       tt: line.ticketTypeName,
-      s: null,
+      s: seatLabel,
       u: userId,
     };
     return {
@@ -217,7 +307,8 @@ export class CheckoutService {
       uniqueId,
       qrPayload: JSON.stringify(payload),
       status: 'valid',
-      seatLabel: null,
+      seatLabel,
+      seatId,
       pricePaidCents: line.unitPriceCents,
       purchasedAt: new Date(),
     } as Ticket;

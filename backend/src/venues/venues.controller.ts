@@ -56,6 +56,12 @@ export class VenuesController {
     return this.service.findOne(id);
   }
 
+  @Get(':id/layout')
+  @ApiOperation({ summary: 'Get a venue seat layout (sections, rows, seats)' })
+  layout(@Param('id') id: string) {
+    return this.service.getLayout(id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
