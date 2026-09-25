@@ -26,6 +26,7 @@ describe('Reserved seating (e2e)', () => {
   let adminToken: string;
   let aliceToken: string;
   let bobToken: string;
+  let venueId: string;
   let floorId: string;
   let balconyId: string;
   let floorSeats: string[];
@@ -79,7 +80,7 @@ describe('Reserved seating (e2e)', () => {
       slug: `e2e-rsv-org-${suffix}`,
     }).expect(201);
 
-    const venueId = (
+    venueId = (
       await send(app, 'post', '/api/v1/venues', adminToken, {
         name: `E2E Reserved Arena ${suffix}`,
         city: 'Berlin',
@@ -319,6 +320,25 @@ describe('Reserved seating (e2e)', () => {
     expect(heldSeat.held).toBe(true);
     expect(heldFloor.rows[0].seats.filter((seat: { held: boolean }) => seat.held)).toHaveLength(1);
 
+    const bobOwnMap = await send(app, 'get', `/api/v1/events/${reservedEventId}/seat-map`, bobToken).expect(200);
+    const bobFloor = bobOwnMap.body.sections.find((section: { name: string }) => section.name === 'Floor');
+    const bobOwnSeat = bobFloor.rows[0].seats.find((seat: { id: string }) => seat.id === floorSeats[0]);
+    expect(bobOwnSeat.held).toBe(false);
+
+    const siblingMap = await send(app, 'get', `/api/v1/events/${reserved2EventId}/seat-map`, aliceToken).expect(200);
+    const siblingFloor = siblingMap.body.sections.find((section: { name: string }) => section.name === 'Floor');
+    const siblingSeat = siblingFloor.rows[0].seats.find((seat: { id: string }) => seat.id === floorSeats[0]);
+    expect(siblingSeat.held).toBe(false);
+
+    const rePick = await send(app, 'post', '/api/v1/cart/items', bobToken, {
+      ticketTypeId: premiumId,
+      quantity: 1,
+      seatIds: [floorSeats[0]],
+    }).expect(201);
+    const bobLine = rePick.body.items.find((i: { ticketTypeId: string }) => i.ticketTypeId === premiumId);
+    expect(bobLine.quantity).toBe(1);
+    expect(bobLine.seats).toHaveLength(1);
+
     await send(app, 'post', '/api/v1/cart/items', aliceToken, {
       ticketTypeId: premiumId,
       quantity: 1,
@@ -387,5 +407,61 @@ describe('Reserved seating (e2e)', () => {
     );
     expect(labels).toEqual(expect.arrayContaining(['Floor \u00b7 A \u00b7 1']));
     expect(labels).toHaveLength(2);
+  });
+
+  it('a cart accumulates distinct seats idempotently for a fresh buyer', async () => {
+    const fresh = await send(app, 'post', '/api/v1/auth/register', undefined, {
+      email: `e2e-multi-${suffix}@example.com`,
+      password: 'e2epass123',
+      name: 'Multi Seat',
+    }).expect(201);
+    const freshToken = fresh.body.accessToken;
+
+    const rowRes = await send(app, 'post', `/api/v1/admin/venues/sections/${floorId}/rows`, adminToken, {
+      label: 'Z',
+      seatCount: 3,
+    }).expect(201);
+    expect(rowRes.body.id).toBeDefined();
+
+    const layout = await send(app, 'get', `/api/v1/venues/${venueId}/layout`).expect(200);
+    const floorLayout = layout.body.sections.find((s: { id: string }) => s.id === floorId);
+    const rowZ = floorLayout.rows.find((row: { label: string }) => row.label === 'Z');
+    const newSeats: string[] = rowZ.seats.map((seat: { id: string }) => seat.id);
+    expect(newSeats).toHaveLength(3);
+    const [seatOne, seatTwo] = newSeats;
+
+    const first = await send(app, 'post', '/api/v1/cart/items', freshToken, {
+      ticketTypeId: premiumId,
+      quantity: 1,
+      seatIds: [seatOne],
+    }).expect(201);
+    const firstLine = first.body.items.find((i: { ticketTypeId: string }) => i.ticketTypeId === premiumId);
+    expect(firstLine.quantity).toBe(1);
+
+    const again = await send(app, 'post', '/api/v1/cart/items', freshToken, {
+      ticketTypeId: premiumId,
+      quantity: 1,
+      seatIds: [seatOne],
+    }).expect(201);
+    const againLine = again.body.items.find((i: { ticketTypeId: string }) => i.ticketTypeId === premiumId);
+    expect(againLine.quantity).toBe(1);
+    expect(againLine.seats).toHaveLength(1);
+
+    const second = await send(app, 'post', '/api/v1/cart/items', freshToken, {
+      ticketTypeId: premiumId,
+      quantity: 1,
+      seatIds: [seatTwo],
+    }).expect(201);
+    const secondLine = second.body.items.find((i: { ticketTypeId: string }) => i.ticketTypeId === premiumId);
+    expect(secondLine.quantity).toBe(2);
+    expect(secondLine.seats).toHaveLength(2);
+
+    const ownMap = await send(app, 'get', `/api/v1/events/${reservedEventId}/seat-map`, freshToken).expect(200);
+    const ownFloor = ownMap.body.sections.find((s: { name: string }) => s.name === 'Floor');
+    const mine = ownFloor.rows
+      .flatMap((row: { seats: { id: string; held: boolean }[] }) => row.seats)
+      .filter((seat: { id: string }) => seat.id === seatOne || seat.id === seatTwo);
+    expect(mine).toHaveLength(2);
+    expect(mine.every((seat: { held: boolean }) => seat.held === false)).toBe(true);
   });
 });

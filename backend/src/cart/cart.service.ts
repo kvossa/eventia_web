@@ -102,13 +102,23 @@ export class CartService {
       if (seatIds.length === 0) {
         throw new AppError('SEATS_REQUIRED', 'Seat selection is required for this ticket type', 400);
       }
-      quantity = seatIds.length;
-      await this.assertSeatsValid(ticketType, seatIds);
-      this.assertMaxPerCustomer(ticketType, (await this.existingQuantity(cart.id, ticketTypeId)) + quantity);
 
       let item = await this.itemsRepository.findOne({
         where: { cartId: cart.id, ticketTypeId },
       });
+      const alreadyInItem = item
+        ? await this.seatIdsForItem(item.id)
+        : new Set<string>();
+      const freshSeatIds = [...new Set(seatIds)].filter((seatId) => !alreadyInItem.has(seatId));
+      if (freshSeatIds.length === 0) {
+        await this.touchExpiry(cart);
+        return this.getWithLines(cart);
+      }
+
+      quantity = freshSeatIds.length;
+      await this.assertSeatsValid(ticketType, freshSeatIds, cart.id);
+      this.assertMaxPerCustomer(ticketType, (await this.existingQuantity(cart.id, ticketTypeId)) + quantity);
+
       if (item) {
         item.quantity += quantity;
         await this.itemsRepository.save(item);
@@ -116,7 +126,7 @@ export class CartService {
         item = this.itemsRepository.create({ cartId: cart.id, ticketTypeId, quantity });
         await this.itemsRepository.save(item);
       }
-      await this.saveSeatsForItem(item, seatIds);
+      await this.saveSeatsForItem(item, freshSeatIds);
     } else {
       if (seatIds.length > 0) {
         throw new AppError(
@@ -309,7 +319,11 @@ export class CartService {
     return true;
   }
 
-  private async assertSeatsValid(ticketType: TicketType, seatIds: string[]): Promise<void> {
+  private async assertSeatsValid(
+    ticketType: TicketType,
+    seatIds: string[],
+    excludeCartId?: string,
+  ): Promise<void> {
     const uniqueSeatIds = [...new Set(seatIds)];
     const seats = await this.seatsRepository.find({
       where: { id: In(uniqueSeatIds) },
@@ -342,7 +356,7 @@ export class CartService {
         throw new ConflictError('SEAT_TAKEN', 'One or more selected seats are already taken');
       }
     }
-    await this.assertSeatsNotCarted(ticketType.eventId, uniqueSeatIds);
+    await this.assertSeatsNotCarted(ticketType.eventId, uniqueSeatIds, excludeCartId);
   }
 
   private async findTakenSeats(eventId: string, seatIds: string[]): Promise<Set<string>> {
@@ -356,19 +370,26 @@ export class CartService {
     return new Set(rows.map((row) => row.seatId));
   }
 
-  private async assertSeatsNotCarted(eventId: string, seatIds: string[]): Promise<void> {
-    const rows = await this.cartItemSeatsRepository
+  private async assertSeatsNotCarted(
+    eventId: string,
+    seatIds: string[],
+    excludeCartId?: string,
+  ): Promise<void> {
+    const qb = this.cartItemSeatsRepository
       .createQueryBuilder('cis')
       .innerJoin(CartItem, 'ci', 'ci.id = cis.cartItemId')
       .innerJoin(TicketType, 'tt', 'tt.id = ci.ticketTypeId')
       .select('cis.seatId', 'seatId')
       .where('cis.seatId IN (:...seatIds)', { seatIds })
-      .andWhere('tt.eventId = :eventId', { eventId })
-      .getRawMany<{ seatId: string }>();
+      .andWhere('tt.eventId = :eventId', { eventId });
+    if (excludeCartId) {
+      qb.andWhere('ci.cartId != :excludeCartId', { excludeCartId });
+    }
+    const rows = await qb.getRawMany<{ seatId: string }>();
     if (rows.length > 0) {
       throw new ConflictError(
         'SEAT_ALREADY_IN_CART',
-        'One or more selected seats are already in someone else\u2019s cart',
+        'One or more selected seats are already in someone else’s cart',
       );
     }
   }
@@ -392,6 +413,14 @@ export class CartService {
     const existing = new Set(existingRows.map((row) => row.seatId));
 
     return offered.filter((seatId) => !taken.has(seatId) && !existing.has(seatId));
+  }
+
+  private async seatIdsForItem(itemId: string): Promise<Set<string>> {
+    const rows = await this.cartItemSeatsRepository.find({
+      where: { cartItemId: itemId },
+      select: { seatId: true },
+    });
+    return new Set(rows.map((row) => row.seatId));
   }
 
   private async saveSeatsForItem(item: CartItem, seatIds: string[]): Promise<void> {

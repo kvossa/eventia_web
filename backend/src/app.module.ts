@@ -16,6 +16,7 @@ import { EventsModule } from './events/events.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { HealthModule } from './health/health.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
+import { MailModule } from './mail/mail.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { OrganizersModule } from './organizers/organizers.module.js';
 import { TicketsModule } from './tickets/tickets.module.js';
@@ -67,6 +68,7 @@ import { VenuesModule } from './venues/venues.module.js';
     OrdersModule,
     TicketsModule,
     NotificationsModule,
+    MailModule,
     FavoritesModule,
     NotFoundModule,
   ],

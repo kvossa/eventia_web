@@ -1,8 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import type { AuthenticatedRequest } from '../common/decorators/current-user.decorator.js';
+import { CART_COOKIE } from '../common/cookies.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard.js';
 import { AdminEventQueryDto, CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
 import { EventsService } from './events.service.js';
 
@@ -24,9 +28,13 @@ export class EventsController {
   }
 
   @Get(':id/seat-map')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Seat map of a reserved-seating event (public)' })
-  seatMap(@Param('id') id: string) {
-    return this.eventsService.getSeatMap(id);
+  seatMap(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.eventsService.getSeatMap(id, {
+      cartId: this.readCartId(req),
+      userId: req.user?.sub ?? null,
+    });
   }
 
   @Post()
@@ -90,6 +98,11 @@ export class EventsController {
   @ApiOperation({ summary: 'Soft-delete an event (admin)' })
   remove(@Param('id') id: string) {
     return this.eventsService.remove(id);
+  }
+
+  private readCartId(req: Request): string | null {
+    const id = (req.cookies as Record<string, string | undefined> | undefined)?.[CART_COOKIE];
+    return typeof id === 'string' && id ? id : null;
   }
 }
 

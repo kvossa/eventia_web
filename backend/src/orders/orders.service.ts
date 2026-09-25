@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager, FindOptionsWhere, In, SelectQueryBuilder } from 'typeorm';
 import { ORDER_STATUSES, type OrderStatus, type Paginated } from '@eventia/shared';
 import { ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
-import { EmailOutboxRecord } from '../entities/email-outbox.entity.js';
 import { Notification } from '../entities/notification.entity.js';
 import { Order } from '../entities/order.entity.js';
 import { Payment } from '../entities/payment.entity.js';
 import { Ticket } from '../entities/ticket.entity.js';
 import { TicketType } from '../entities/ticket-type.entity.js';
+import { MailService } from '../mail/mail.service.js';
 import { OrderQueryDto } from './dto/order-query.dto.js';
 import { OrderDetailView, OrderWithRelations, serializeOrder } from './order.serializer.js';
 
@@ -20,7 +20,10 @@ const ORDER_RELATIONS = {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly mailService: MailService,
+  ) {}
 
   async listForUser(userId: string, query: OrderQueryDto): Promise<Paginated<OrderDetailView>> {
     const page = query.page ?? 1;
@@ -247,8 +250,9 @@ export class OrdersService {
     );
 
     if (order.user) {
-      await em.getRepository(EmailOutboxRecord).save(
-        em.getRepository(EmailOutboxRecord).create({
+      await this.mailService.enqueueIfOptedIn(
+        {
+          userId: order.userId,
           to: order.user.email,
           subject: `Refund for your Eventia order (${order.orderNumber})`,
           body: [
@@ -260,7 +264,8 @@ export class OrdersService {
             `The refund is simulated; your original payment method is not actually charged back.`,
             `Your tickets for this order are no longer valid.`,
           ].join('\n'),
-        }),
+        },
+        em,
       );
     }
 

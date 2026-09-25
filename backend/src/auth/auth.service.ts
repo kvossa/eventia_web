@@ -8,9 +8,9 @@ import { Repository } from 'typeorm';
 import { CartService } from '../cart/cart.service.js';
 import { AppError } from '../common/app-error.js';
 import { parseTtlMs } from '../common/duration.js';
-import { EmailOutboxRecord } from '../entities/email-outbox.entity.js';
 import { RefreshSession } from '../entities/refresh-session.entity.js';
 import { User } from '../entities/user.entity.js';
+import { MailService } from '../mail/mail.service.js';
 import { toPublicUser } from '../users/user.mapper.js';
 import { UsersService } from '../users/users.service.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -30,8 +30,7 @@ export class AuthService {
   constructor(
     @InjectRepository(RefreshSession)
     private readonly sessionsRepository: Repository<RefreshSession>,
-    @InjectRepository(EmailOutboxRecord)
-    private readonly outboxRepository: Repository<EmailOutboxRecord>,
+    private readonly mailService: MailService,
     private readonly usersService: UsersService,
     private readonly cartService: CartService,
     private readonly jwtService: JwtService,
@@ -115,20 +114,18 @@ export class AuthService {
     await this.usersService.save(user);
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200';
-    await this.outboxRepository.save(
-      this.outboxRepository.create({
-        to: user.email,
-        subject: 'Reset your Eventia password',
-        body: [
-          'Hello,',
-          '',
-          'You requested a password reset for your Eventia account.',
-          `${frontendUrl}/auth/reset-password?token=${token}`,
-          '',
-          'This link expires in 60 minutes. If you did not request this, you can ignore this email.',
-        ].join('\n'),
-      }),
-    );
+    await this.mailService.enqueue({
+      to: user.email,
+      subject: 'Reset your Eventia password',
+      body: [
+        'Hello,',
+        '',
+        'You requested a password reset for your Eventia account.',
+        `${frontendUrl}/auth/reset-password?token=${token}`,
+        '',
+        'This link expires in 60 minutes. If you did not request this, you can ignore this email.',
+      ].join('\n'),
+    });
 
     return { success: true };
   }
@@ -149,13 +146,11 @@ export class AuthService {
     await this.usersService.save(user);
     await this.revokeAllForUser(user.id);
 
-    await this.outboxRepository.save(
-      this.outboxRepository.create({
-        to: user.email,
-        subject: 'Your Eventia password was reset',
-        body: ['Hello,', '', 'Your Eventia password has been reset successfully.', 'If you did not do this, please contact support.'].join('\n'),
-      }),
-    );
+    await this.mailService.enqueue({
+      to: user.email,
+      subject: 'Your Eventia password was reset',
+      body: ['Hello,', '', 'Your Eventia password has been reset successfully.', 'If you did not do this, please contact support.'].join('\n'),
+    });
 
     return { success: true };
   }

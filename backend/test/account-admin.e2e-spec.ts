@@ -248,6 +248,12 @@ describe('Account & admin foundations (e2e)', () => {
     await send(app, 'patch', '/api/v1/users/me/notification-preferences', userToken, {
       unknown: true,
     }).expect(400);
+
+    const restored = await send(app, 'patch', '/api/v1/users/me/notification-preferences', userToken, {
+      emailNotifications: true,
+      smsNotifications: true,
+    }).expect(200);
+    expect(restored.body.emailNotifications).toBe(true);
   });
 
   it('notifications: checkout creates purchase_confirmed, unread flows, mark read', async () => {
@@ -306,8 +312,24 @@ describe('Account & admin foundations (e2e)', () => {
         r.subject.includes(cancelled.body.orderNumber as string),
     );
     expect(refundEmail).toBeDefined();
-    expect(refundEmail?.status).toBe('pending');
     expect(refundEmail?.body).toContain(cancelled.body.orderNumber as string);
+    expect(refundEmail?.status).toBe('pending');
+
+    await send(app, 'post', '/api/v1/admin/outbox/drain', userToken).expect(403);
+    let drained = 0;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const res = await send(app, 'post', '/api/v1/admin/outbox/drain', adminToken).expect(201);
+      drained += res.body.processed as number;
+      if (res.body.processed === 0) break;
+    }
+    expect(drained).toBeGreaterThan(0);
+
+    const sentEmail = await app
+      .get(DataSource)
+      .getRepository(EmailOutboxRecord)
+      .findOneBy({ id: refundEmail?.id as string });
+    expect(sentEmail?.status).toBe('sent');
+    expect(sentEmail?.sentAt).not.toBeNull();
 
     await send(app, 'post', `/api/v1/orders/${order.body.id}/cancel`, userToken).expect(409);
 
@@ -397,5 +419,44 @@ describe('Account & admin foundations (e2e)', () => {
       .expect((res) => {
         expect(res.body.code).toBe('INVALID_RESET_TOKEN');
       });
+  });
+  it('email preference: opted-out customer gets no refund or security-exempt change', async () => {
+    const reg = await send(app, 'post', '/api/v1/auth/register', undefined, {
+      email: `e2e-optout-${suffix}@example.com`,
+      password: 'e2epass123',
+      name: 'Opt Out',
+    }).expect(201);
+    const optToken = reg.body.accessToken;
+    const optEmail = `e2e-optout-${suffix}@example.com`;
+
+    await send(app, 'patch', '/api/v1/users/me/notification-preferences', optToken, {
+      emailNotifications: false,
+    }).expect(200);
+
+    const tt = (await send(app, 'get', `/api/v1/admin/events/${eventId}`, adminToken).expect(200)).body
+      .ticketTypes.find((t: { id: string }) => t.id === ticketTypeId);
+    expect(tt.quantity - tt.quantitySold).toBeGreaterThan(0);
+
+    await send(app, 'post', '/api/v1/cart/items', optToken, {
+      ticketTypeId,
+      quantity: 1,
+    }).expect(201);
+    const order = await send(app, 'post', '/api/v1/checkout', optToken, {}).expect(201);
+
+    const outbox = app.get(DataSource).getRepository(EmailOutboxRecord);
+    const afterCheckout = await outbox.find({ where: { to: optEmail } });
+    expect(afterCheckout.filter((r) => r.subject.includes(order.body.orderNumber as string))).toHaveLength(0);
+
+    const cancelled = await send(app, 'post', `/api/v1/orders/${order.body.id}/cancel`, optToken).expect(201);
+    const afterRefund = await outbox.find({ where: { to: optEmail } });
+    expect(
+      afterRefund.filter((r) => r.subject.startsWith('Refund for your Eventia order')),
+    ).toHaveLength(0);
+
+    await send(app, 'post', '/api/v1/auth/forgot-password', undefined, { email: optEmail }).expect(200);
+    const afterReset = await outbox.find({ where: { to: optEmail } });
+    const security = afterReset.filter((r) => r.subject === 'Reset your Eventia password');
+    expect(security).toHaveLength(1);
+    expect(cancelled.body.status).toBe('refunded');
   });
 });

@@ -29,6 +29,11 @@ export interface EventDetail extends EventListItem {
   organizer: Organizer;
 }
 
+export interface SeatMapViewer {
+  cartId?: string | null;
+  userId?: string | null;
+}
+
 @Injectable()
 export class EventsService {
   constructor(
@@ -164,7 +169,7 @@ export class EventsService {
     return this.buildDetail(event, ticketTypes);
   }
 
-  async getSeatMap(id: string): Promise<unknown> {
+  async getSeatMap(id: string, viewer?: SeatMapViewer): Promise<unknown> {
     const event = await this.eventsRepo.findOne({ where: { id, status: 'published' } });
     if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
     if (!event.reservedSeating) {
@@ -203,14 +208,23 @@ export class EventsService {
       .getRawMany<{ seatId: string }>();
     const occupied = new Set(occupiedRows.map((row) => row.seatId));
 
-    const heldRows = await this.cartItemSeatsRepo
+    const heldQuery = this.cartItemSeatsRepo
       .createQueryBuilder('cis')
       .select('DISTINCT cis.seatId', 'seatId')
       .innerJoin('cart_items', 'ci', 'ci.id = cis.cartItemId')
       .innerJoin('carts', 'c', 'c.id = ci.cartId')
+      .innerJoin('ticket_types', 'tt', 'tt.id = ci.ticketTypeId')
       .where("c.status = 'active'")
-      .getRawMany<{ seatId: string }>();
-    const held = new Set(heldRows.map((row) => row.seatId));
+      .andWhere('tt.eventId = :eventId', { eventId: event.id });
+    if (viewer?.cartId) {
+      heldQuery.andWhere('c.id != :cartId', { cartId: viewer.cartId });
+    }
+    if (viewer?.userId) {
+      heldQuery.andWhere('c.user_id IS DISTINCT FROM :userId', { userId: viewer.userId });
+    }
+    const held = new Set(
+      (await heldQuery.getRawMany<{ seatId: string }>()).map((row) => row.seatId),
+    );
 
     return {
       ticketTypes: ticketTypes.map((tt) => ({

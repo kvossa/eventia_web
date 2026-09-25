@@ -32,12 +32,17 @@ async function cleanupTestFixtures(): Promise<void> {
   await AppDataSource.transaction(async (em) => {
     await em.query(`DELETE FROM orders`);
     await em.query(`DELETE FROM cart_items`);
-    await em.query(`DELETE FROM events WHERE name LIKE 'E2E %' OR name = 'Summer Symphony Nights'`);
+    await em.query(`DELETE FROM email_outbox`);
+    await em.query(
+      `DELETE FROM events WHERE name LIKE 'E2E %' OR name LIKE '%(copy)%' OR name = 'Summer Symphony Nights'`,
+    );
     await em.query(`DELETE FROM venues WHERE name LIKE 'E2E %'`);
     await em.query(`DELETE FROM organizers WHERE slug = 'harmony-events-2' OR name LIKE 'E2E %'`);
     await em.query(`DELETE FROM categories WHERE name LIKE 'E2E %'`);
   });
-  console.log('[seed] removed test fixtures (E2E *, harmony-events-2, Summer Symphony Nights)');
+  console.log(
+    '[seed] removed test fixtures (E2E *, *(copy)*, harmony-events-2, Summer Symphony Nights) and cleared email_outbox',
+  );
 }
 
 async function seedUsers(): Promise<void> {

@@ -6,7 +6,7 @@ import { generateOrderNumber, generateTicketUniqueId } from '../common/ids.js';
 import { Cart } from '../entities/cart.entity.js';
 import { CartItem } from '../entities/cart-item.entity.js';
 import { CartLineSeat, CartService, CartWithLines } from '../cart/cart.service.js';
-import { EmailOutboxRecord } from '../entities/email-outbox.entity.js';
+import { MailService } from '../mail/mail.service.js';
 import { Event } from '../entities/event.entity.js';
 import { Notification } from '../entities/notification.entity.js';
 import { Order } from '../entities/order.entity.js';
@@ -37,6 +37,7 @@ export class CheckoutService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly cartService: CartService,
+    private readonly mailService: MailService,
   ) {}
 
   async placeOrder(userId: string, email: string, dto: CheckoutDto): Promise<OrderDetailView> {
@@ -135,8 +136,9 @@ export class CheckoutService {
         }),
       );
 
-      await em.getRepository(EmailOutboxRecord).save(
-        em.getRepository(EmailOutboxRecord).create({
+      await this.mailService.enqueueIfOptedIn(
+        {
+          userId,
           to: email,
           subject: `Your Eventia tickets (${order.orderNumber})`,
           body: [
@@ -147,7 +149,8 @@ export class CheckoutService {
             `Total: €${(totalCents / 100).toFixed(2)}`,
             `Your digital tickets are available in your Eventia account.`,
           ].join('\n'),
-        }),
+        },
+        em,
       );
 
       await em.getRepository(CartItem).delete({ cartId: cart.id });
