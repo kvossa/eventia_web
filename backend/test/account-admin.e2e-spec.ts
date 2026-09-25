@@ -297,6 +297,18 @@ describe('Account & admin foundations (e2e)', () => {
     const ttRestored = afterCancel.body.ticketTypes.find((t) => t.id === ticketTypeId);
     expect(ttRestored.quantitySold).toBe(soldAfter - 1);
 
+    const outboxRows = await app.get(DataSource).getRepository(EmailOutboxRecord).find({
+      where: { to: USER_EMAIL },
+    });
+    const refundEmail = outboxRows.find(
+      (r) =>
+        r.subject.startsWith('Refund for your Eventia order') &&
+        r.subject.includes(cancelled.body.orderNumber as string),
+    );
+    expect(refundEmail).toBeDefined();
+    expect(refundEmail?.status).toBe('pending');
+    expect(refundEmail?.body).toContain(cancelled.body.orderNumber as string);
+
     await send(app, 'post', `/api/v1/orders/${order.body.id}/cancel`, userToken).expect(409);
 
     const otherReg = await send(app, 'post', '/api/v1/auth/register', undefined, {
@@ -311,13 +323,15 @@ describe('Account & admin foundations (e2e)', () => {
     await send(app, 'get', '/api/v1/admin/orders/export', userToken).expect(403);
 
     const csv = await send(app, 'get', '/api/v1/admin/orders/export', adminToken).expect(200);
-    const lines = (csv.body.csv as string).split('\r\n');
+    const raw = csv.body.csv as string;
+    expect(raw.startsWith('\uFEFF')).toBe(true);
+    const lines = raw.replace(/^\uFEFF/, '').split('\r\n');
     expect(lines[0]).toBe('orderNumber,createdAt,customerName,customerEmail,status,totalCents,itemsCount,paymentStatus');
     const rows = lines.slice(1).filter(Boolean);
     expect(rows.length).toBeGreaterThan(0);
 
     const confirmed = await send(app, 'get', '/api/v1/admin/orders/export?status=confirmed', adminToken).expect(200);
-    const confRows = (confirmed.body.csv as string).split('\r\n').slice(1).filter(Boolean);
+    const confRows = (confirmed.body.csv as string).replace(/^\uFEFF/, '').split('\r\n').slice(1).filter(Boolean);
     expect(confRows.length).toBeGreaterThan(0);
     expect(confRows.every((l) => l.split(',')[4] === 'confirmed')).toBe(true);
   });

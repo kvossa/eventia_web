@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, EntityManager, FindOptionsWhere, In, SelectQueryBuilder } from 'typeorm';
 import { ORDER_STATUSES, type OrderStatus, type Paginated } from '@eventia/shared';
 import { ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
+import { EmailOutboxRecord } from '../entities/email-outbox.entity.js';
 import { Notification } from '../entities/notification.entity.js';
 import { Order } from '../entities/order.entity.js';
 import { Payment } from '../entities/payment.entity.js';
@@ -9,6 +10,8 @@ import { Ticket } from '../entities/ticket.entity.js';
 import { TicketType } from '../entities/ticket-type.entity.js';
 import { OrderQueryDto } from './dto/order-query.dto.js';
 import { OrderDetailView, OrderWithRelations, serializeOrder } from './order.serializer.js';
+
+const CSV_BOM = '\uFEFF';
 
 const ORDER_RELATIONS = {
   items: { event: { venue: true }, ticketType: true, tickets: true },
@@ -141,9 +144,12 @@ export class OrdersService {
       ];
     });
     const all = [header, ...rows];
-    return all
-      .map((cols) => cols.map((c) => this.csvCell(c)).join(','))
-      .join('\r\n');
+    return (
+      CSV_BOM +
+      all
+        .map((cols) => cols.map((c) => this.csvCell(c)).join(','))
+        .join('\r\n')
+    );
   }
 
   private csvCell(value: string): string {
@@ -173,7 +179,7 @@ export class OrdersService {
     return this.dataSource.transaction(async (em) => {
       const order = await em.getRepository(Order).findOne({
         where: { id: orderId },
-        relations: { items: { tickets: true } },
+        relations: { items: { tickets: true }, user: true },
       });
       if (!order) throw new NotFoundError('ORDER_NOT_FOUND', 'Order not found');
       return this.refundOrder(em, order);
@@ -184,7 +190,7 @@ export class OrdersService {
     return this.dataSource.transaction(async (em) => {
       const order = await em.getRepository(Order).findOne({
         where: { id: orderId, userId },
-        relations: { items: { tickets: true } },
+        relations: { items: { tickets: true }, user: true },
       });
       if (!order) throw new NotFoundError('ORDER_NOT_FOUND', 'Order not found');
       if (order.status === 'refunded' || order.status === 'cancelled') {
@@ -239,6 +245,24 @@ export class OrdersService {
         message: `Your order ${order.orderNumber} has been refunded.`,
       }),
     );
+
+    if (order.user) {
+      await em.getRepository(EmailOutboxRecord).save(
+        em.getRepository(EmailOutboxRecord).create({
+          to: order.user.email,
+          subject: `Refund for your Eventia order (${order.orderNumber})`,
+          body: [
+            `Hello,`,
+            ``,
+            `Your order has been refunded.`,
+            `Order number: ${order.orderNumber}`,
+            `Refunded amount: €${(order.totalCents / 100).toFixed(2)}`,
+            `The refund is simulated; your original payment method is not actually charged back.`,
+            `Your tickets for this order are no longer valid.`,
+          ].join('\n'),
+        }),
+      );
+    }
 
     return this.findDetail(em, order.id);
   }
