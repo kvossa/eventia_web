@@ -6,7 +6,7 @@ import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
 import { formatCents } from '../../core/format';
-import { EventDetail, TicketType, TicketTypeInput } from '../../core/models';
+import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../../core/models';
 
 @Component({
   selector: 'app-admin-ticket-types',
@@ -66,6 +66,43 @@ import { EventDetail, TicketType, TicketTypeInput } from '../../core/models';
             <p class="empty" data-testid="admin-ticket-types-empty">No ticket types yet.</p>
           }
         </div>
+
+        @if (event()!.reservedSeating && layout(); as lay) {
+          <div class="card card-pad sections" data-testid="admin-tt-sections">
+            <h2>Reserved seating — ticket type sections</h2>
+            <p class="empty">
+              Bind each ticket type to the venue sections it can be sold in. Customers pick seats from these
+              sections on the event page.
+            </p>
+            @for (t of event()!.ticketTypes; track t.id) {
+              <div class="sec-row" [attr.data-testid]="'admin-tt-sections-' + t.id">
+                <div class="sec-name">{{ t.name }}</div>
+                <div class="sec-opts">
+                  @for (s of lay.sections; track s.id) {
+                    <label class="sec-check">
+                      <input
+                        type="checkbox"
+                        [checked]="isSectionSelected(t.id, s.id)"
+                        (change)="toggleSection(t.id, s.id)"
+                        [attr.data-testid]="'section-check-' + t.id + '-' + s.id"
+                      />
+                      {{ s.name }}
+                    </label>
+                  } @empty {
+                    <span class="empty">This venue has no sections yet.</span>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm"
+                  [disabled]="savingSectionsId() === t.id"
+                  (click)="saveSections(t)"
+                  [attr.data-testid]="'save-sections-' + t.id"
+                >{{ savingSectionsId() === t.id ? 'Saving…' : 'Save' }}</button>
+              </div>
+            }
+          </div>
+        }
 
         <form class="card card-pad form" (ngSubmit)="save()" data-testid="admin-ticket-types-form" novalidate>
           <h2>{{ editingId() ? 'Edit ticket type' : 'Add ticket type' }}</h2>
@@ -137,6 +174,13 @@ import { EventDetail, TicketType, TicketTypeInput } from '../../core/models';
     .sold, .window, .max { color: var(--color-text-dim); font-size: 0.9rem; }
     .visible { font-size: 0.9rem; }
     .empty { color: var(--color-text-dim); margin: 10px 0; }
+    .sections { margin-top: 24px; }
+    .sections h2 { margin: 0 0 6px; font-size: 1.05rem; }
+    .sec-row { display: grid; grid-template-columns: 1fr 2.2fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--color-border); }
+    .sec-name { font-weight: 600; }
+    .sec-opts { display: flex; flex-wrap: wrap; gap: 12px; }
+    .sec-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--color-text); cursor: pointer; }
+    @media (max-width: 900px) { .sec-row { grid-template-columns: 1fr; } }
     .actions { display: flex; gap: 12px; }
     .link-btn { background: none; border: none; color: var(--color-text-dim); cursor: pointer; padding: 0; font-size: 0.88rem; text-decoration: underline; }
     .link-btn:hover { color: var(--color-text); }
@@ -160,6 +204,9 @@ export class AdminTicketTypesPage {
   readonly saving = signal(false);
   readonly event = signal<EventDetail | null>(null);
   readonly editingId = signal<string | null>(null);
+  readonly layout = signal<VenueLayoutView | null>(null);
+  readonly sectionDraft = signal<Record<string, string[]>>({});
+  readonly savingSectionsId = signal<string | null>(null);
 
   protected priceEur = 0;
   protected form: TicketTypeInput = this.emptyForm();
@@ -177,11 +224,53 @@ export class AdminTicketTypesPage {
       return;
     }
     try {
-      this.event.set(await this.api.adminEvent(id));
+      const event = await this.api.adminEvent(id);
+      this.event.set(event);
+      if (event.reservedSeating) await this.loadLayout(event);
     } catch (err) {
       this.toast.show('error', (err as Error).message);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  isSectionSelected(ttId: string, sectionId: string): boolean {
+    return (this.sectionDraft()[ttId] ?? []).includes(sectionId);
+  }
+
+  toggleSection(ttId: string, sectionId: string): void {
+    const current = this.sectionDraft()[ttId] ?? [];
+    const next = current.includes(sectionId)
+      ? current.filter((id) => id !== sectionId)
+      : [...current, sectionId];
+    this.sectionDraft.set({ ...this.sectionDraft(), [ttId]: next });
+  }
+
+  async saveSections(t: TicketType): Promise<void> {
+    this.savingSectionsId.set(t.id);
+    try {
+      const sectionIds = this.sectionDraft()[t.id] ?? [];
+      await this.api.ticketTypeSections(t.id, sectionIds);
+      this.toast.show('success', `Sections updated for "${t.name}".`);
+      this.event.set(await this.api.adminEvent(this.event()!.id));
+    } catch (err) {
+      this.toast.show('error', (err as Error).message);
+    } finally {
+      this.savingSectionsId.set(null);
+    }
+  }
+
+  private async loadLayout(event: EventDetail): Promise<void> {
+    try {
+      const layout = await this.api.venueLayout(event.venueId);
+      this.layout.set(layout);
+      const draft: Record<string, string[]> = {};
+      for (const tt of event.ticketTypes) {
+        draft[tt.id] = tt.sectionIds ?? [];
+      }
+      this.sectionDraft.set(draft);
+    } catch {
+      this.layout.set(null);
     }
   }
 

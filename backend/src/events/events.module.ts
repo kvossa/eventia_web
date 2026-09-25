@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Cart } from '../entities/cart.entity.js';
+import { CartItem } from '../entities/cart-item.entity.js';
+import { CartItemSeat } from '../entities/cart-item-seat.entity.js';
 import { Category } from '../entities/category.entity.js';
 import { Event } from '../entities/event.entity.js';
 import { Organizer } from '../entities/organizer.entity.js';
@@ -26,6 +29,9 @@ import { EventsService } from './events.service.js';
       Seat,
       Ticket,
       TicketTypeSection,
+      Cart,
+      CartItem,
+      CartItemSeat,
     ]),
   ],
   controllers: [EventsController, AdminEventsController],

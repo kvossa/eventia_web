@@ -312,6 +312,13 @@ describe('Reserved seating (e2e)', () => {
       seatIds: [floorSeats[0]],
     }).expect(201);
 
+    const heldMap = await send(app, 'get', `/api/v1/events/${reservedEventId}/seat-map`).expect(200);
+    const heldFloor = heldMap.body.sections.find((section: { name: string }) => section.name === 'Floor');
+    const heldSeat = heldFloor.rows[0].seats.find((seat: { id: string }) => seat.id === floorSeats[0]);
+    expect(heldSeat.occupied).toBe(false);
+    expect(heldSeat.held).toBe(true);
+    expect(heldFloor.rows[0].seats.filter((seat: { held: boolean }) => seat.held)).toHaveLength(1);
+
     await send(app, 'post', '/api/v1/cart/items', aliceToken, {
       ticketTypeId: premiumId,
       quantity: 1,

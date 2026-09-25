@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Paginated, EventAvailability, EventStatus } from '@eventia/shared';
 import { In, Repository } from 'typeorm';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
+import { CartItemSeat } from '../entities/cart-item-seat.entity.js';
 import { Category } from '../entities/category.entity.js';
 import { Event } from '../entities/event.entity.js';
 import { Organizer } from '../entities/organizer.entity.js';
@@ -45,6 +46,8 @@ export class EventsService {
     private readonly sectionsRepo: Repository<Section>,
     @InjectRepository(TicketTypeSection)
     private readonly ticketTypeSectionsRepo: Repository<TicketTypeSection>,
+    @InjectRepository(CartItemSeat)
+    private readonly cartItemSeatsRepo: Repository<CartItemSeat>,
     @InjectRepository(SeatRow)
     private readonly seatRowsRepo: Repository<SeatRow>,
     @InjectRepository(Seat)
@@ -200,6 +203,15 @@ export class EventsService {
       .getRawMany<{ seatId: string }>();
     const occupied = new Set(occupiedRows.map((row) => row.seatId));
 
+    const heldRows = await this.cartItemSeatsRepo
+      .createQueryBuilder('cis')
+      .select('DISTINCT cis.seatId', 'seatId')
+      .innerJoin('cart_items', 'ci', 'ci.id = cis.cartItemId')
+      .innerJoin('carts', 'c', 'c.id = ci.cartId')
+      .where("c.status = 'active'")
+      .getRawMany<{ seatId: string }>();
+    const held = new Set(heldRows.map((row) => row.seatId));
+
     return {
       ticketTypes: ticketTypes.map((tt) => ({
         id: tt.id,
@@ -222,6 +234,7 @@ export class EventsService {
                 number: seat.number,
                 isAccessible: seat.isAccessible,
                 occupied: occupied.has(seat.id),
+                held: held.has(seat.id),
               })),
           })),
       })),

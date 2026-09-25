@@ -434,6 +434,7 @@ export interface EventSeatMapSeat {
   number: number;
   isAccessible: boolean;
   occupied: boolean;
+  held: boolean;
 }
 
 export interface EventSeatMapRow {

@@ -37,6 +37,11 @@ import { RowView, SectionView } from '../../core/models';
           </button>
         </form>
 
+        <div class="legend" aria-hidden="true">
+          <span class="lg"><i class="sw standard"></i>Standard seat</span>
+          <span class="lg"><i class="sw accessible"></i>Accessible seat</span>
+        </div>
+
         @for (s of sections(); track s.id) {
           <div class="card card-pad section" [attr.data-testid]="'layout-section-' + s.id">
             <div class="section-head">
@@ -141,6 +146,10 @@ import { RowView, SectionView } from '../../core/models';
       color: var(--color-text-dim); font-size: 0.75rem; display: inline-flex; align-items: center; justify-content: center;
     }
     .seat.accessible { border-color: var(--color-accent); color: var(--color-accent); }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 16px; color: var(--color-text-dim); font-size: 0.8rem; }
+    .lg { display: inline-flex; align-items: center; gap: 6px; }
+    .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--color-border); background: var(--color-surface-2); }
+    .sw.accessible { border-color: var(--color-accent); background: var(--color-accent); }
     .row-actions { margin-left: auto; display: flex; gap: 10px; }
     .row-form { border-top: 1px solid var(--color-border); padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
     .add-row { align-self: flex-start; }

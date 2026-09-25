@@ -147,12 +147,19 @@ export class OrdersService {
   }
 
   private csvCell(value: string): string {
-    return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+    const escaped = /^[=+\-@]/.test(value) ? `'${value}` : value;
+    return /[",\r\n]/.test(escaped) ? `"${escaped.replace(/"/g, '""')}"` : escaped;
   }
 
   async setStatus(orderId: string, status: OrderStatus): Promise<OrderDetailView> {
     if (![...ORDER_STATUSES].includes(status)) {
       throw new ValidationError(`Invalid status: ${status}`);
+    }
+    if (status === 'refunded' || status === 'cancelled') {
+      throw new ConflictError(
+        'USE_DEDICATED_FLOW',
+        'Refunds and cancellations must use their dedicated endpoints so seats and stock are released',
+      );
     }
     const order = await this.dataSource.getRepository(Order).findOne({ where: { id: orderId } });
     if (!order) throw new NotFoundError('ORDER_NOT_FOUND', 'Order not found');
@@ -195,8 +202,12 @@ export class OrdersService {
 
     const soldByType = new Map<string, number>();
     for (const item of order.items ?? []) {
-      const current = soldByType.get(item.ticketTypeId) ?? 0;
-      soldByType.set(item.ticketTypeId, current + item.quantity);
+      const tickets = item.tickets ?? (await em.getRepository(Ticket).find({ where: { orderItemId: item.id } }));
+      const reserved = tickets.some((ticket) => ticket.seatId !== null);
+      if (!reserved) {
+        const current = soldByType.get(item.ticketTypeId) ?? 0;
+        soldByType.set(item.ticketTypeId, current + item.quantity);
+      }
       if (item.tickets) {
         for (const ticket of item.tickets) ticket.status = 'refunded';
         await em.getRepository(Ticket).save(item.tickets);
