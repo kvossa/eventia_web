@@ -71,7 +71,7 @@ export class CartService {
 
     if (cartId) {
       const existing = await this.cartsRepository.findOne({
-        where: { id: cartId, ...active },
+        where: { id: cartId, userId: IsNull(), ...active },
       });
       if (existing && existing.expiresAt.getTime() > Date.now()) return existing;
     }
@@ -290,6 +290,9 @@ export class CartService {
     }
     if (ticketType.event.status !== 'published') {
       throw new ValidationError('This event is not available for purchase');
+    }
+    if (ticketType.event.dateTime.getTime() < Date.now()) {
+      throw new ValidationError('This event has already taken place');
     }
     if (!this.isWithinSalesWindow(ticketType)) {
       throw new ValidationError('Sales are not open for this ticket type');

@@ -7,10 +7,38 @@ import { formatCents, formatDateTime } from '../../core/format';
 import { OrderDetailView } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 
-function makeKey(): string {
-  const k = crypto.randomUUID();
-  sessionStorage.setItem('evt_checkout_key', k);
-  return k;
+const KEY_STORAGE = 'evt_checkout_key';
+
+function readStoredKey(): string | null {
+  try {
+    return sessionStorage.getItem(KEY_STORAGE);
+  } catch {
+    return null;
+  }
+}
+
+function storeKey(key: string): void {
+  try {
+    sessionStorage.setItem(KEY_STORAGE, key);
+  } catch {
+    return;
+  }
+}
+
+function clearKey(): void {
+  try {
+    sessionStorage.removeItem(KEY_STORAGE);
+  } catch {
+    return;
+  }
+}
+
+function idempotencyKey(): string {
+  const stored = readStoredKey();
+  if (stored) return stored;
+  const fresh = crypto.randomUUID();
+  storeKey(fresh);
+  return fresh;
 }
 
 @Component({
@@ -136,13 +164,17 @@ export class CheckoutPage implements OnInit {
   async pay(): Promise<void> {
     this.paying.set(true);
     try {
-      const order = await this.api.post<OrderDetailView>('/checkout', { idempotencyKey: makeKey() });
-      sessionStorage.removeItem('evt_checkout_key');
+      const order = await this.api.post<OrderDetailView>('/checkout', {
+        idempotencyKey: idempotencyKey(),
+      });
+      clearKey();
       this.successOrder.set(order);
       this.cart.clearLocal();
     } catch (err) {
-      const api = err as { code?: string; message?: string };
-      sessionStorage.removeItem('evt_checkout_key');
+      const api = err as { code?: string; message?: string; statusCode?: number };
+      // statusCode 0 means the response never arrived, so the order may or may
+      // not have been created. Keep the key so a retry is deduplicated.
+      if (api.statusCode !== 0) clearKey();
       const message =
         api.code === 'CART_EMPTY'
           ? 'Your cart is empty. Add some tickets first.'

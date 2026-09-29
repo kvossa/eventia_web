@@ -263,6 +263,9 @@ export class CheckoutService {
     if (event.status !== 'published') {
       throw new ValidationError(`"${event.name}" is no longer available for purchase`);
     }
+    if (event.dateTime.getTime() < Date.now()) {
+      throw new ValidationError(`"${event.name}" has already taken place`);
+    }
     const now = Date.now();
     if (ticketType.salesStartsAt && ticketType.salesStartsAt.getTime() > now) {
       throw new ValidationError('Sales are not open yet for a ticket type in your cart');

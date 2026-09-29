@@ -3,6 +3,7 @@ import { RouterLink, ActivatedRoute } from '@angular/router';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
+import { formatCents } from '../../core/format';
 import { OrderDetailView } from '../../core/models';
 
 @Component({
@@ -16,14 +17,14 @@ import { OrderDetailView } from '../../core/models';
         <div class="card card-pad" data-testid="order-detail">
           <h2 class="page-title">{{ order()!.orderNumber }}</h2>
           <p class="meta">{{ formatDate(order()!.createdAt) }} · {{ statusLabel(order()!) }}</p>
-          <p class="meta">Total {{ cents(order()!.totalCents) }}</p>
+          <p class="meta">Total {{ formatCents(order()!.totalCents) }}</p>
         </div>
 
         <div class="grid" data-testid="order-items">
           @for (it of order()!.items; track it.id) {
             <div class="card card-pad" [attr.data-testid]="'order-item-' + it.id">
               <h3 class="event-name">{{ it.event.name }}</h3>
-              <p class="meta">{{ it.ticketType?.name ?? 'Ticket' }} · {{ cents(it.subtotalCents) }}</p>
+              <p class="meta">{{ it.ticketType?.name ?? 'Ticket' }} · {{ formatCents(it.subtotalCents) }}</p>
             </div>
           }
         </div>
@@ -51,7 +52,6 @@ import { OrderDetailView } from '../../core/models';
   `,
   styles: `
     .cancel-row { margin: 18px 0; }
-    .btn-danger { background: var(--color-danger); color: var(--color-bg); border: none; }
   `,
 })
 export class MyOrderDetailPage {
@@ -62,6 +62,8 @@ export class MyOrderDetailPage {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+
+  protected readonly formatCents = formatCents;
 
   async ngOnInit(): Promise<void> {
     const id = this.route.snapshot.paramMap.get('id');
@@ -89,7 +91,7 @@ export class MyOrderDetailPage {
   async cancel(): Promise<void> {
     const o = this.order();
     if (!o || o.status !== 'confirmed') return;
-    if (!window.confirm(`Cancel order ${o.orderNumber} and refund ${this.cents(o.totalCents)}?`)) return;
+    if (!window.confirm(`Cancel order ${o.orderNumber} and refund ${formatCents(o.totalCents)}?`)) return;
     this.cancelling.set(true);
     try {
       const updated = await this.api.cancelOrder(o.id);
@@ -102,7 +104,4 @@ export class MyOrderDetailPage {
     }
   }
 
-  cents(c: number): string {
-    return `$${(c / 100).toFixed(2)}`;
-  }
 }

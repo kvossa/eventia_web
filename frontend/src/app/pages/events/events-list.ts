@@ -1,7 +1,7 @@
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subscription } from 'rxjs';
 import { EmptyState } from '../../components/empty-state';
 import { EventCard } from '../../components/event-card';
 import { Loading } from '../../components/loading';
@@ -28,22 +28,43 @@ interface Filters {
     <div class="page">
       <h1 class="page-title">Events</h1>
 
-      <form class="filters panel" (ngSubmit)="applyFilters()" novalidate>
+      <form class="filters panel" [formGroup]="filters" (ngSubmit)="applyFilters()" novalidate>
         <div class="f-row">
-          <input class="field" type="text" placeholder="Search…" formControlName="q" />
-          <select class="field" formControlName="category">
-            <option value="">All categories</option>
-            @for (cat of categories(); track cat.id) {
-              <option [value]="cat.slug">{{ cat.name }}</option>
-            }
-          </select>
-          <input class="field" type="text" placeholder="City" formControlName="city" />
+          <label class="f-label">
+            <span>Search</span>
+            <input class="field" type="text" placeholder="Event, city or venue" formControlName="q" />
+          </label>
+          <label class="f-label">
+            <span>Category</span>
+            <select class="field" formControlName="category">
+              <option value="">All categories</option>
+              @for (cat of categories(); track cat.id) {
+                <option [value]="cat.slug">{{ cat.name }}</option>
+              }
+            </select>
+          </label>
+          <label class="f-label">
+            <span>City</span>
+            <input class="field" type="text" placeholder="City" formControlName="city" />
+          </label>
         </div>
         <div class="f-row">
-          <input class="field" type="date" formControlName="dateFrom" />
-          <input class="field" type="date" formControlName="dateTo" />
-          <input class="field" type="number" min="0" placeholder="Min price (€)" formControlName="priceMin" />
-          <input class="field" type="number" min="0" placeholder="Max price (€)" formControlName="priceMax" />
+          <label class="f-label">
+            <span>From date</span>
+            <input class="field" type="date" formControlName="dateFrom" />
+          </label>
+          <label class="f-label">
+            <span>To date</span>
+            <input class="field" type="date" formControlName="dateTo" />
+          </label>
+          <label class="f-label">
+            <span>Min price (€)</span>
+            <input class="field" type="number" min="0" placeholder="Min" formControlName="priceMin" />
+          </label>
+          <label class="f-label">
+            <span>Max price (€)</span>
+            <input class="field" type="number" min="0" placeholder="Max" formControlName="priceMax" />
+          </label>
         </div>
         <div class="f-actions">
           <button class="btn btn-primary" type="submit">Apply filters</button>
@@ -100,6 +121,8 @@ interface Filters {
       gap: 10px;
     }
     .f-row { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .f-label { display: flex; flex-direction: column; gap: 4px; }
+    .f-label > span { font-size: 0.75rem; color: var(--color-text-dim); }
     .f-actions { display: flex; gap: 10px; justify-content: flex-end; }
     .count { color: var(--color-text-dim); font-size: 0.9rem; margin: 4px 0 16px; }
     .pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 28px; }
@@ -131,26 +154,38 @@ export class EventsListPage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private sub: Subscription | null = null;
+  private searchSub: Subscription | null = null;
 
   async ngOnInit(): Promise<void> {
     void this.loadCategories();
     this.sub = this.route.queryParams.subscribe((params) => {
       this.page.set(params['page'] ? Number(params['page']) : 1);
-      this.filters.patchValue({
-        q: params['q'] ?? '',
-        category: params['category'] ?? '',
-        city: params['city'] ?? '',
-        dateFrom: params['dateFrom'] ?? '',
-        dateTo: params['dateTo'] ?? '',
-        priceMin: params['priceMin'] ? Number(params['priceMin']) : null,
-        priceMax: params['priceMax'] ? Number(params['priceMax']) : null,
-      });
+      this.filters.patchValue(
+        {
+          q: params['q'] ?? '',
+          category: params['category'] ?? '',
+          city: params['city'] ?? '',
+          dateFrom: params['dateFrom'] ?? '',
+          dateTo: params['dateTo'] ?? '',
+          priceMin: params['priceMin'] ? Number(params['priceMin']) / 100 : null,
+          priceMax: params['priceMax'] ? Number(params['priceMax']) / 100 : null,
+        },
+        { emitEvent: false },
+      );
       void this.loadEvents();
     });
+
+    this.searchSub = this.filters.controls.q.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged())
+      .subscribe((value) => {
+        if ((value ?? '').trim() === (this.route.snapshot.queryParamMap.get('q') ?? '')) return;
+        this.applyFilters();
+      });
   }
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+    this.searchSub?.unsubscribe();
   }
 
   applyFilters(): void {
@@ -158,7 +193,18 @@ export class EventsListPage implements OnInit, OnDestroy {
   }
 
   reset(): void {
-    this.filters.reset();
+    this.filters.reset(
+      {
+        q: '',
+        category: '',
+        city: '',
+        dateFrom: '',
+        dateTo: '',
+        priceMin: null,
+        priceMax: null,
+      },
+      { emitEvent: false },
+    );
     void this.router.navigate(['/events']);
   }
 

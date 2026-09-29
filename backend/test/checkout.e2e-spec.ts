@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
+import { configureTestApp } from './test-app.helper.js';
 
 const suffix = `ck-${Date.now().toString(36)}`;
 const ADMIN_EMAIL = 'root@eventia.local';
@@ -34,10 +35,7 @@ describe('Cart to checkout (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    configureTestApp(app);
     await app.init();
 
     const login = await request(app.getHttpServer())

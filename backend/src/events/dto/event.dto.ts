@@ -182,21 +182,22 @@ export class EventQueryDto {
   q?: string;
 
   @IsOptional()
-  @IsUUID()
-  category?: string;
-
-  @IsOptional()
   @IsString()
   @MaxLength(255)
   city?: string;
 
   @IsOptional()
   @IsString()
-  from?: string;
+  @MaxLength(255)
+  category?: string;
 
   @IsOptional()
   @IsString()
-  to?: string;
+  dateFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  dateTo?: string;
 
   @IsOptional()
   @Type(() => Number)

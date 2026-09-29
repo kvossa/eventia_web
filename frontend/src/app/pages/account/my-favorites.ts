@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { AvailabilityBadge } from '../../components/availability-badge';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
+import { formatDateTime } from '../../core/format';
 import { ToastService } from '../../core/toast.service';
 import { FavoriteView } from '../../core/models';
 
@@ -27,7 +28,7 @@ import { FavoriteView } from '../../core/models';
               <app-availability-badge [state]="ev.availability.state" />
               <a class="event-name" routerLink="/events/{{ ev.id }}">
                 <h2>{{ ev.name }}</h2>
-                <p class="meta">{{ ev.dateTime }} · {{ ev.city }}</p>
+                <p class="meta">{{ formatDateTime(ev.dateTime) }} · {{ ev.city }}</p>
                 <p class="meta">{{ ev.venue?.name }} — {{ ev.venue?.address }}</p>
                 <p class="meta">Favorited {{ favoriteDate(ev.favoritedAt) }}</p>
               </a>
@@ -54,6 +55,8 @@ export class MyFavoritesPage {
 
   private readonly api = inject(ApiService);
   private readonly toast = inject(ToastService);
+
+  protected readonly formatDateTime = formatDateTime;
 
   async ngOnInit(): Promise<void> {
     try {

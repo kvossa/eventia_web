@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { EventCard } from '../../components/event-card';
 import { Loading } from '../../components/loading';
@@ -8,7 +8,7 @@ import { Category, EventListItem, Paginated } from '../../core/models';
 
 @Component({
   selector: 'app-home',
-  imports: [ReactiveFormsModule, RouterLink, EventCard, Loading],
+  imports: [FormsModule, ReactiveFormsModule, RouterLink, EventCard, Loading],
   template: `
     <section class="hero">
       <div class="hero-inner">
@@ -122,6 +122,6 @@ export class HomePage implements OnInit {
 
   search(): void {
     const q = this.searchQuery.value.trim();
-    void this.router.navigate(['/events'], q ? { queryParams: { q } } : {});
+    void this.router.navigate(['/events'], { queryParams: q ? { q } : {} });
   }
 }

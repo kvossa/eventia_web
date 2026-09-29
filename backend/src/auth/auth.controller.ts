@@ -5,7 +5,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { AuthUserPayload } from '../common/decorators/current-user.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { CART_COOKIE, clearRefreshCookie, REFRESH_COOKIE, setCartCookie, setRefreshCookie } from '../common/cookies.js';
+import { CART_COOKIE, clearCartCookie, clearRefreshCookie, REFRESH_COOKIE, setCartCookie, setRefreshCookie } from '../common/cookies.js';
 import { parseTtlMs } from '../common/duration.js';
 import { CART_TTL_MS } from '../cart/cart.service.js';
 import { AuthResult, AuthService } from './auth.service.js';
@@ -89,6 +89,7 @@ export class AuthController {
     const token = this.readRefreshToken(req);
     await this.authService.logout(token);
     clearRefreshCookie(res, { secure: this.cookieSecure });
+    clearCartCookie(res, { secure: this.cookieSecure });
     return { success: true };
   }
 

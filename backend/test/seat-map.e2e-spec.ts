@@ -1,7 +1,8 @@
 import request from 'supertest';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../src/app.module.js';
+import { configureTestApp } from './test-app.helper.js';
 
 const ADMIN_EMAIL = 'root@eventia.local';
 const ADMIN_PASSWORD = 'adminpass1234';
@@ -31,10 +32,7 @@ describe('Seat map (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
-    app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
-    );
+    configureTestApp(app);
     await app.init();
 
     const adminLogin = await send(app, 'post', '/api/v1/auth/login', undefined, {

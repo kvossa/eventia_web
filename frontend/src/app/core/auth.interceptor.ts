@@ -5,6 +5,11 @@ import { AuthService } from './auth.service';
 
 const AUTH_FREE_PATHS = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/logout'];
 
+const withCredentials = (r: HttpRequest<unknown>): HttpRequest<unknown> => {
+  if (r.withCredentials && r.credentials === 'include') return r;
+  return r.clone({ withCredentials: true, credentials: 'include' });
+};
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
 
@@ -14,13 +19,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return r.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
   };
 
-  return next(withToken(req)).pipe(
+  return next(withCredentials(withToken(req))).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401 && !AUTH_FREE_PATHS.some((p) => req.url.endsWith(p))) {
         return from(auth.refresh()).pipe(
           switchMap((ok) => {
             if (!ok) return throwError(() => err);
-            return next(withToken(req));
+            return next(withCredentials(withToken(req)));
           }),
         );
       }

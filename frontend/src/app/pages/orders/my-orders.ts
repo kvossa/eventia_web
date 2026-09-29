@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
+import { formatCents } from '../../core/format';
 import { MyOrderListItem } from '../../core/models';
 
 @Component({
@@ -25,7 +26,7 @@ import { MyOrderListItem } from '../../core/models';
               <h2 class="order-number">{{ o.orderNumber }}</h2>
               <p class="meta">{{ formatDate(o.createdAt) }} — {{ itemsLabel(o) }}</p>
               <p class="meta">
-                Total {{ cents(o.totalCents) }} · {{ statusLabel(o) }}
+                Total {{ formatCents(o.totalCents) }} · {{ statusLabel(o) }}
               </p>
             </a>
           }
@@ -60,6 +61,8 @@ export class MyOrdersPage {
   readonly limit = 10;
 
   private readonly api = inject(ApiService);
+
+  protected readonly formatCents = formatCents;
 
   async ngOnInit(): Promise<void> {
     await this.load(1);
@@ -101,7 +104,4 @@ export class MyOrdersPage {
     return o.status.charAt(0).toUpperCase() + o.status.slice(1);
   }
 
-  cents(c: number): string {
-    return `$${(c / 100).toFixed(2)}`;
-  }
 }

@@ -39,24 +39,28 @@ import type { OrderStatus } from '@eventia/shared';
           <div class="detail-row">
             <span class="muted">Status</span>
             <div class="inline">
-              <select
-                class="field"
-                [(ngModel)]="status"
-                [disabled]="busy()"
-                data-testid="admin-order-status"
-              >
-                <option value="pending">pending</option>
-                <option value="confirmed">confirmed</option>
-                <option value="cancelled">cancelled</option>
-                <option value="refunded">refunded</option>
-              </select>
-              <button
-                class="btn btn-sm btn-primary"
-                type="button"
-                [disabled]="busy() || !changed()"
-                (click)="updateStatus()"
-                data-testid="admin-order-status-save"
-              >Save</button>
+              @if (terminal()) {
+                <span class="badge {{ o.status }}" data-testid="admin-order-status-terminal">
+                  {{ statusLabel(o.status) }}
+                </span>
+              } @else {
+                <select
+                  class="field"
+                  [(ngModel)]="status"
+                  [disabled]="busy()"
+                  data-testid="admin-order-status"
+                >
+                  <option value="pending">pending</option>
+                  <option value="confirmed">confirmed</option>
+                </select>
+                <button
+                  class="btn btn-sm btn-primary"
+                  type="button"
+                  [disabled]="busy() || !changed()"
+                  (click)="updateStatus()"
+                  data-testid="admin-order-status-save"
+                >Save</button>
+              }
             </div>
           </div>
         </section>
@@ -106,7 +110,6 @@ import type { OrderStatus } from '@eventia/shared';
     .item:last-child { border-bottom: none; }
     .item-main { display: flex; flex-direction: column; }
     .refund-row { margin-top: 20px; }
-    .refund-row .btn-danger { background: var(--color-danger); color: var(--color-bg); border: none; }
     @media (max-width: 600px) {
       .head { flex-direction: column; }
       .inline { flex-wrap: wrap; }
@@ -137,7 +140,12 @@ export class AdminOrderDetailPage {
 
   changed(): boolean {
     const o = this.order();
-    return !!o && this.status !== o.status;
+    return !!o && !this.terminal() && this.status !== o.status;
+  }
+
+  terminal(): boolean {
+    const s = this.order()?.status;
+    return s === 'refunded' || s === 'cancelled';
   }
 
   async load(id: string): Promise<void> {
@@ -155,7 +163,7 @@ export class AdminOrderDetailPage {
 
   async updateStatus(): Promise<void> {
     const o = this.order();
-    if (!o || this.status === o.status) return;
+    if (!o || this.terminal() || this.status === o.status) return;
     this.busy.set(true);
     try {
       const updated = await this.api.adminOrderStatus(o.id, this.status);

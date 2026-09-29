@@ -100,6 +100,16 @@ button {
   border-color: var(--color-accent);
 }
 
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--color-bg);
+  border: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 .btn-block {
   width: 100%;
 }
@@ -167,6 +177,31 @@ label.form-label {
 }
 
 .badge.temporarily_unavailable {
+  background: rgba(138, 147, 168, 0.14);
+  color: var(--color-text-dim);
+}
+
+.badge.valid {
+  background: rgba(52, 211, 153, 0.14);
+  color: var(--color-success);
+}
+
+.badge.used {
+  background: rgba(251, 191, 36, 0.14);
+  color: var(--color-warning);
+}
+
+.badge.cancelled {
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--color-danger);
+}
+
+.badge.refunded {
+  background: rgba(138, 147, 168, 0.14);
+  color: var(--color-text-dim);
+}
+
+.badge.expired {
   background: rgba(138, 147, 168, 0.14);
   color: var(--color-text-dim);
 }

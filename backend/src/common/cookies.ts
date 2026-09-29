@@ -28,6 +28,15 @@ export const setRefreshCookie = (res: Response, token: string, options: CookieOp
   });
 };
 
+export const clearCartCookie = (res: Response, options: Pick<CookieOptions, 'secure'>): void => {
+  res.clearCookie(CART_COOKIE, {
+    httpOnly: false,
+    sameSite: 'lax',
+    path: '/',
+    secure: options.secure,
+  });
+};
+
 export const clearRefreshCookie = (res: Response, options: Pick<CookieOptions, 'secure'>): void => {
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,

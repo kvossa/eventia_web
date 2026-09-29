@@ -34,6 +34,10 @@ export interface SeatMapViewer {
   userId?: string | null;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UNMATCHABLE_CATEGORY_ID = '00000000-0000-0000-0000-000000000000';
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 @Injectable()
 export class EventsService {
   constructor(
@@ -62,7 +66,7 @@ export class EventsService {
   ) {}
 
   async list(query: EventQueryDto): Promise<Paginated<EventListItem>> {
-    return this.runList(query, 'published');
+    return this.runList(query, 'published', true);
   }
 
   async listAdmin(query: AdminEventQueryDto): Promise<Paginated<EventListItem>> {
@@ -72,6 +76,7 @@ export class EventsService {
   private async runList(
     query: EventQueryDto,
     status?: EventStatus,
+    excludePast = false,
   ): Promise<Paginated<EventListItem>> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 12;
@@ -83,6 +88,11 @@ export class EventsService {
       qb.andWhere('event.status = :status', { status });
     }
 
+    if (excludePast) {
+      qb.andWhere('event.dateTime >= :now', { now: new Date() });
+    }
+
+
     if (query.q) {
       qb.andWhere(
         '(event.name ILIKE :q OR event.city ILIKE :q OR venue.name ILIKE :q OR event.address ILIKE :q)',
@@ -93,16 +103,19 @@ export class EventsService {
       qb.andWhere('event.city ILIKE :city', { city: `%${query.city}%` });
     }
     if (query.category) {
-      qb.andWhere('event.categoryId = :category', { category: query.category });
+      qb.andWhere('event.categoryId = :category', {
+        category: await this.resolveCategoryId(query.category),
+      });
     }
-    if (query.from) {
-      const from = new Date(query.from);
-      if (Number.isNaN(from.getTime())) throw new ValidationError('from must be a valid date');
+    if (query.dateFrom) {
+      const from = new Date(query.dateFrom);
+      if (Number.isNaN(from.getTime())) throw new ValidationError('dateFrom must be a valid date');
       qb.andWhere('event.dateTime >= :from', { from });
     }
-    if (query.to) {
-      const to = new Date(query.to);
-      if (Number.isNaN(to.getTime())) throw new ValidationError('to must be a valid date');
+    if (query.dateTo) {
+      const to = new Date(query.dateTo);
+      if (Number.isNaN(to.getTime())) throw new ValidationError('dateTo must be a valid date');
+      if (DATE_ONLY.test(query.dateTo)) to.setUTCHours(23, 59, 59, 999);
       qb.andWhere('event.dateTime <= :to', { to });
     }
 
@@ -139,6 +152,13 @@ export class EventsService {
 
   findById(id: string): Promise<Event | null> {
     return this.eventsRepo.findOne({ where: { id } });
+  }
+
+  private async resolveCategoryId(value: string): Promise<string> {
+    if (UUID_PATTERN.test(value)) return value.toLowerCase();
+
+    const category = await this.categoriesRepo.findOne({ where: { slug: value } });
+    return category?.id ?? UNMATCHABLE_CATEGORY_ID;
   }
 
   async detail(id: string): Promise<EventDetail> {
