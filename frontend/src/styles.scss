@@ -242,9 +242,14 @@ label.form-label {
   gap: 8px;
 }
 
+@media (max-width: 420px) {
+  .toast-stack { left: 16px; }
+  .toast { min-width: 0; }
+}
+
 .toast {
   min-width: 240px;
-  max-width: 360px;
+  max-width: min(360px, calc(100vw - 32px));
   padding: 12px 16px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-2);

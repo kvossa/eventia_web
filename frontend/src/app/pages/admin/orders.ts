@@ -13,10 +13,10 @@ import type { OrderStatus } from '@eventia/shared';
   selector: 'app-admin-orders',
   imports: [FormsModule, RouterLink, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Orders</h1>
 
-      <app-admin-nav />
 
       <form class="filters" (ngSubmit)="search()" data-testid="admin-orders-search-form">
         <div class="form-field status">
@@ -79,11 +79,11 @@ import type { OrderStatus } from '@eventia/shared';
           </div>
           @for (o of orders(); track o.id) {
             <a class="row" routerLink="/admin/orders/{{ o.id }}" [attr.data-testid]="'admin-order-' + o.id">
-              <span class="order-number">{{ o.orderNumber }}</span>
-              <span class="chip tag-{{ o.status }}">{{ o.status }}</span>
-              <span class="total">{{ formatCents(o.totalCents) }}</span>
-              <span class="date">{{ shortDate(o.createdAt) }}</span>
-              <span class="date">{{ itemsLabel(o) }}</span>
+              <span class="order-number" data-label="Order">{{ o.orderNumber }}</span>
+              <span class="chip tag-{{ o.status }}" data-label="Status">{{ o.status }}</span>
+              <span class="total" data-label="Total">{{ formatCents(o.totalCents) }}</span>
+              <span class="date" data-label="Date">{{ shortDate(o.createdAt) }}</span>
+              <span class="date" data-label="Items">{{ itemsLabel(o) }}</span>
             </a>
           }
         </div>
@@ -106,7 +106,8 @@ import type { OrderStatus } from '@eventia/shared';
           >Next</button>
         </div>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -125,9 +126,17 @@ import type { OrderStatus } from '@eventia/shared';
     .tag-refunded { background: var(--color-danger); color: var(--color-bg); }
     .pager { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
     .page-num { color: var(--color-text-dim); font-size: 0.9rem; }
-    @media (max-width: 760px) {
+    @media (max-width: 900px) {
       .head { display: none; }
-      .row { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
+    }
+    @media (max-width: 640px) {
+      .row { grid-template-columns: 1fr; }
+      .row > * { display: flex; align-items: baseline; gap: 10px; }
+      .row > *::before {
+        content: attr(data-label); min-width: 90px; flex: none;
+        color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      }
     }
   `,
 })

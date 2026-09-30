@@ -80,8 +80,8 @@ import { Category, EventListItem, Paginated } from '../../core/models';
     .hero-inner { max-width: var(--container); margin: 0 auto; }
     .hero h1 { font-size: clamp(1.9rem, 4vw, 2.8rem); margin: 0 0 8px; }
     .hero p { color: var(--color-text-dim); margin: 0 0 24px; }
-    .hero-search { display: flex; gap: 10px; max-width: 560px; }
-    .hero-search .field { padding: 14px 16px; }
+    .hero-search { display: flex; flex-wrap: wrap; gap: 10px; max-width: 560px; }
+    .hero-search .field { padding: 14px 16px; flex: 1 1 200px; min-width: 0; }
     .chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0; }
     .chip {
       padding: 8px 16px; border-radius: 999px;

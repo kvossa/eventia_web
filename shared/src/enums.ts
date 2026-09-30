@@ -10,6 +10,9 @@ export const EVENT_STATUSES = [
 ] as const;
 export type EventStatus = (typeof EVENT_STATUSES)[number];
 
+export const EVENT_ADMIN_WRITEABLE_STATUSES = ['draft', 'published', 'sold_out'] as const;
+export type EventAdminWriteableStatus = (typeof EVENT_ADMIN_WRITEABLE_STATUSES)[number];
+
 export const EVENT_AVAILABILITY_STATES = [
   'available',
   'almost_sold_out',

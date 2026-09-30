@@ -11,11 +11,11 @@ import { RowView, SectionView } from '../../core/models';
   selector: 'app-admin-venue-layout',
   imports: [FormsModule, RouterLink, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Seat layout</h1>
       <a class="back" routerLink="/admin/venues">← Back to venues</a>
 
-      <app-admin-nav />
 
       @if (loading()) {
         <app-loading />
@@ -119,7 +119,8 @@ import { RowView, SectionView } from '../../core/models';
           <p class="empty" data-testid="layout-empty">No sections yet. Add one above.</p>
         }
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .back { color: var(--color-text-dim); text-decoration: none; font-size: 0.9rem; }

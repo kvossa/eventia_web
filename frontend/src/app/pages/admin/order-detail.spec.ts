@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminOrderDetailPage } from './order-detail';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
-import type { OrderStatus } from '@eventia/shared';
+import type { OrderStatus, TicketStatus } from '@eventia/shared';
 import type { OrderDetailView } from '../../core/models';
 
 const makeOrder = (status: OrderStatus): OrderDetailView =>
@@ -17,6 +17,21 @@ const makeOrder = (status: OrderStatus): OrderDetailView =>
     items: [],
     payment: { id: 'p1', provider: 'sim', providerRef: null, status: 'succeeded', amountCents: 5000 },
   }) as unknown as OrderDetailView;
+
+const makeOrderWithTicket = (ticketStatus: TicketStatus): OrderDetailView => ({
+  ...makeOrder('confirmed'),
+  items: [
+    {
+      id: 'i1',
+      event: { id: 'e1', name: 'Big Gig', dateTime: '2026-07-01T19:00:00.000Z', venue: null },
+      ticketType: { id: 'tt1', name: 'GA' },
+      unitPriceCents: 2500,
+      quantity: 1,
+      subtotalCents: 2500,
+      tickets: [{ id: 't1', uniqueId: 'EVT-2001-001', status: ticketStatus, seatLabel: null, qrPayload: '', pricePaidCents: 2500, purchasedAt: '2026-05-04T10:00:00.000Z' }],
+    },
+  ],
+});
 
 describe('AdminOrderDetailPage status control', () => {
   const setup = async (status: OrderStatus) => {
@@ -31,7 +46,7 @@ describe('AdminOrderDetailPage status control', () => {
       providers: [
         { provide: ApiService, useValue: api },
         { provide: ToastService, useValue: { show: vi.fn() } },
-        { provide: Router, useValue: { navigate: vi.fn() } },
+        provideRouter([]),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: 'o1' }) } },
@@ -90,5 +105,76 @@ describe('AdminOrderDetailPage status control', () => {
 
     expect(fixture.componentInstance.terminal()).toBe(true);
     expect(fixture.componentInstance.changed()).toBe(false);
+  });
+});
+
+describe('AdminOrderDetailPage per-ticket cancel', () => {
+  const setup = async (ticketStatus: TicketStatus) => {
+    const api = {
+      adminOrder: vi.fn().mockResolvedValue(makeOrderWithTicket(ticketStatus)),
+      adminOrderStatus: vi.fn(),
+      adminOrderRefund: vi.fn(),
+      adminCancelTicket: vi.fn().mockResolvedValue({ id: 't1', status: 'cancelled' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [AdminOrderDetailPage],
+      providers: [
+        { provide: ApiService, useValue: api },
+        { provide: ToastService, useValue: { show: vi.fn() } },
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'o1' }) } },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(AdminOrderDetailPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { fixture, api };
+  };
+
+  beforeEach(() => TestBed.resetTestingModule());
+
+  it('offers a cancel button only for valid tickets', async () => {
+    const valid = await setup('valid');
+    expect(
+      (valid.fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-ticket-cancel-t1"]'),
+    ).toBeTruthy();
+    TestBed.resetTestingModule();
+
+    const refunded = await setup('refunded');
+    expect(
+      (refunded.fixture.nativeElement as HTMLElement).querySelector('[data-testid="admin-ticket-cancel-t1"]'),
+    ).toBeNull();
+  });
+
+  it('cancels a ticket after confirm and reloads the order', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const { fixture, api } = await setup('valid');
+
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="admin-ticket-cancel-t1"]')!
+      .click();
+    await fixture.whenStable();
+
+    expect(api.adminCancelTicket).toHaveBeenCalledWith('t1');
+    expect(api.adminOrder).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips the call when the confirm dialog is dismissed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { fixture, api } = await setup('valid');
+
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('[data-testid="admin-ticket-cancel-t1"]')!
+      .click();
+    await fixture.whenStable();
+
+    expect(api.adminCancelTicket).not.toHaveBeenCalled();
+    expect(api.adminOrder).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { CartService } from '../core/cart.service';
@@ -11,7 +11,7 @@ import { ToastService } from '../core/toast.service';
   template: `
     <header class="header">
       <a class="brand" routerLink="/">eventia</a>
-      <nav class="nav">
+      <nav class="nav" [class.open]="menuOpen()" (click)="menuOpen.set(false)" data-testid="header-nav">
         <a routerLink="/events" routerLinkActive="active">Events</a>
         @if (auth.isAuthenticated()) {
           <a routerLink="/my-tickets" routerLinkActive="active">My Tickets</a>
@@ -48,6 +48,13 @@ import { ToastService } from '../core/toast.service';
           <a class="btn btn-ghost" routerLink="/auth/login">Log in</a>
           <a class="btn btn-primary" routerLink="/auth/register">Sign up</a>
         }
+        <button
+          class="menu-btn"
+          type="button"
+          [attr.aria-expanded]="menuOpen()"
+          (click)="menuOpen.set(!menuOpen())"
+          data-testid="header-menu-toggle"
+        >{{ menuOpen() ? '✕' : '☰' }}</button>
       </div>
     </header>
   `,
@@ -71,7 +78,7 @@ import { ToastService } from '../core/toast.service';
       background: var(--color-accent); color: #fff; font-size: 0.68rem; font-weight: 700;
       display: inline-flex; align-items: center; justify-content: center;
     }
-    .actions { display: flex; align-items: center; gap: 12px; }
+    .actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
     .cart { position: relative; display: inline-flex; color: var(--color-text-dim); text-decoration: none; padding: 6px; }
     .cart:hover { color: var(--color-text); }
     .badge {
@@ -81,12 +88,29 @@ import { ToastService } from '../core/toast.service';
     }
     .user { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; background: none; border: none; color: var(--color-text); cursor: pointer; font-size: 0.9rem; }
     .logoff { font-size: 0.68rem; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+    .menu-btn {
+      display: none; align-items: center; justify-content: center;
+      width: 38px; height: 38px; background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm); color: var(--color-text); font-size: 1.05rem; cursor: pointer;
+    }
+    @media (max-width: 760px) {
+      .header { flex-wrap: wrap; row-gap: 8px; }
+      .menu-btn { display: inline-flex; }
+      .nav {
+        display: none; flex: 1 1 100%; order: 3; flex-direction: column; gap: 0;
+        padding: 6px 0 2px;
+      }
+      .nav.open { display: flex; }
+      .nav a { padding: 11px 4px; border-bottom: 1px solid var(--color-border); }
+      .actions { margin-left: auto; }
+    }
   `,
 })
 export class Header implements OnInit {
   readonly auth = inject(AuthService);
   readonly cart = inject(CartService);
   readonly notifications = inject(NotificationsService);
+  readonly menuOpen = signal(false);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 

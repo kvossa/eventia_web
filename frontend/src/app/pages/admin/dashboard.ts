@@ -17,10 +17,10 @@ interface StatCard {
   selector: 'app-admin-dashboard',
   imports: [RouterLink, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Admin Dashboard</h1>
 
-      <app-admin-nav />
 
       @if (loading()) {
         <app-loading />
@@ -54,7 +54,8 @@ interface StatCard {
           <p>Could not load dashboard stats.</p>
         </div>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .stat { display: flex; flex-direction: column; gap: 6px; }

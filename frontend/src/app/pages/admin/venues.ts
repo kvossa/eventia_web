@@ -11,10 +11,10 @@ import { Venue, VenueInput } from '../../core/models';
   selector: 'app-admin-venues',
   imports: [FormsModule, RouterLink, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Venues</h1>
 
-      <app-admin-nav />
 
       @if (loading()) {
         <app-loading />
@@ -29,16 +29,16 @@ import { Venue, VenueInput } from '../../core/models';
           </div>
           @for (v of venues(); track v.id) {
             <div class="row" [attr.data-testid]="'admin-venue-' + v.id">
-              <div class="name">
+              <div class="name" data-label="Venue">
                 @if (editingId() === v.id) {
                   <input class="field" [(ngModel)]="form.name" data-testid="venue-edit-name" />
                 } @else {
                   {{ v.name }}
                 }
               </div>
-              <div class="city">{{ v.city }}</div>
-              <div class="address">{{ v.address }}</div>
-              <div class="capacity">{{ v.capacity ?? '—' }}</div>
+              <div class="city" data-label="City">{{ v.city }}</div>
+              <div class="address" data-label="Address">{{ v.address }}</div>
+              <div class="capacity" data-label="Capacity">{{ v.capacity ?? '—' }}</div>
               <div class="actions">
                 @if (editingId() === v.id) {
                   <button type="button" class="link-btn" (click)="cancelEdit()">Cancel</button>
@@ -94,7 +94,8 @@ import { Venue, VenueInput } from '../../core/models';
           </div>
         </form>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .head { display: grid; grid-template-columns: 1.4fr 1fr 1.6fr 0.8fr 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--color-border); color: var(--color-text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -116,9 +117,18 @@ import { Venue, VenueInput } from '../../core/models';
     .actions { display: flex; gap: 12px; margin-top: 4px; }
     @media (max-width: 900px) {
       .head { display: none; }
-      .row { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
     }
-    @media (max-width: 640px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .row { grid-template-columns: 1fr; }
+      .row > *:not(.actions) { display: flex; align-items: baseline; gap: 10px; }
+      .row > *::before {
+        content: attr(data-label); min-width: 90px; flex: none;
+        color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .row > .actions::before { content: none; }
+      .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    }
   `,
 })
 export class AdminVenuesPage {

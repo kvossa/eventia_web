@@ -38,13 +38,14 @@ import {
   SectionView,
   TicketType,
   TicketTypeInput,
+  TicketView,
   UnreadCountResponse,
   UserUpdateInput,
   Venue,
   VenueInput,
   VenueLayoutView,
 } from './models';
-import type { OrderStatus, UserRole } from '@eventia/shared';
+import type { EventAdminWriteableStatus, OrderStatus, UserRole } from '@eventia/shared';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -169,6 +170,10 @@ export class ApiService {
     return this.post<OrderDetailView>(`/admin/orders/${id}/refund`, {});
   }
 
+  adminCancelTicket(id: string): Promise<TicketView> {
+    return this.post<TicketView>(`/admin/tickets/${id}/cancel`, {});
+  }
+
   adminOrdersExport(params?: AdminOrderQueryParams): Promise<{ csv: string }> {
     return this.get<{ csv: string }>(
       '/admin/orders/export',
@@ -271,16 +276,8 @@ export class ApiService {
     return this.patch<EventListItem>(`/events/${id}`, body);
   }
 
-  eventPublish(id: string): Promise<EventListItem> {
-    return this.post<EventListItem>(`/events/${id}/publish`, {});
-  }
-
-  eventUnpublish(id: string): Promise<EventListItem> {
-    return this.post<EventListItem>(`/events/${id}/unpublish`, {});
-  }
-
-  eventMarkSoldOut(id: string): Promise<EventListItem> {
-    return this.post<EventListItem>(`/events/${id}/mark-sold-out`, {});
+  adminSetEventStatus(id: string, status: EventAdminWriteableStatus): Promise<EventListItem> {
+    return this.patch<EventListItem>(`/admin/events/${id}/status`, { status });
   }
 
   eventDuplicate(id: string): Promise<EventListItem> {

@@ -11,10 +11,10 @@ import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../c
   selector: 'app-admin-event-form',
   imports: [FormsModule, RouterLink, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">{{ eventId() ? 'Edit event' : 'New event' }}</h1>
 
-      <app-admin-nav />
 
       @if (loading()) {
         <app-loading />
@@ -124,7 +124,8 @@ import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../c
           </div>
         </form>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .form { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }

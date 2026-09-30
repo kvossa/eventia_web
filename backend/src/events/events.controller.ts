@@ -8,6 +8,7 @@ import { RolesGuard } from '../common/guards/roles.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard.js';
 import { AdminEventQueryDto, CreateEventDto, EventQueryDto, UpdateEventDto } from './dto/event.dto.js';
+import { UpdateEventStatusDto } from './dto/event-status.dto.js';
 import { EventsService } from './events.service.js';
 
 @ApiTags('events')
@@ -59,7 +60,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Publish an event (admin)' })
+  @ApiOperation({ summary: '[deprecated] Use PATCH /admin/events/:id/status', deprecated: true })
   publish(@Param('id') id: string) {
     return this.eventsService.setStatus(id, 'published');
   }
@@ -68,7 +69,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Unpublish an event (admin)' })
+  @ApiOperation({ summary: '[deprecated] Use PATCH /admin/events/:id/status', deprecated: true })
   unpublish(@Param('id') id: string) {
     return this.eventsService.setStatus(id, 'draft');
   }
@@ -77,7 +78,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Force mark an event sold out (admin)' })
+  @ApiOperation({ summary: '[deprecated] Use PATCH /admin/events/:id/status', deprecated: true })
   markSoldOut(@Param('id') id: string) {
     return this.eventsService.setStatus(id, 'sold_out');
   }
@@ -126,5 +127,13 @@ export class AdminEventsController {
   @ApiOperation({ summary: 'Event detail for any status (admin)' })
   detail(@Param('id') id: string) {
     return this.eventsService.detailAdmin(id);
+  }
+
+  @Patch(':id/status')
+  @Roles('admin')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set event status (admin, draft/published/sold_out)' })
+  setStatus(@Param('id') id: string, @Body() dto: UpdateEventStatusDto) {
+    return this.eventsService.setStatus(id, dto.status);
   }
 }

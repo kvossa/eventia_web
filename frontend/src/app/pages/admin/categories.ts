@@ -10,10 +10,10 @@ import { Category, CategoryInput } from '../../core/models';
   selector: 'app-admin-categories',
   imports: [FormsModule, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Categories</h1>
 
-      <app-admin-nav />
 
       @if (loading()) {
         <app-loading />
@@ -27,15 +27,15 @@ import { Category, CategoryInput } from '../../core/models';
           </div>
           @for (c of categories(); track c.id) {
             <div class="row" [attr.data-testid]="'admin-category-' + c.id">
-              <div class="name">
+              <div class="name" data-label="Category">
                 @if (editingId() === c.id) {
                   <input class="field" [(ngModel)]="form.name" data-testid="category-edit-name" />
                 } @else {
                   {{ c.name }}
                 }
               </div>
-              <div class="slug">{{ c.slug }}</div>
-              <div class="description">{{ c.description ?? '—' }}</div>
+              <div class="slug" data-label="Slug">{{ c.slug }}</div>
+              <div class="description" data-label="Description">{{ c.description ?? '—' }}</div>
               <div class="actions">
                 @if (editingId() === c.id) {
                   <button type="button" class="link-btn" (click)="cancelEdit()">Cancel</button>
@@ -76,7 +76,8 @@ import { Category, CategoryInput } from '../../core/models';
           </div>
         </form>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .head { display: grid; grid-template-columns: 1.4fr 0.8fr 2fr 1fr; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--color-border); color: var(--color-text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
@@ -97,9 +98,18 @@ import { Category, CategoryInput } from '../../core/models';
     .actions { display: flex; gap: 12px; margin-top: 4px; }
     @media (max-width: 900px) {
       .head { display: none; }
-      .row { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
     }
-    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .row { grid-template-columns: 1fr; }
+      .row > *:not(.actions) { display: flex; align-items: baseline; gap: 10px; }
+      .row > *::before {
+        content: attr(data-label); min-width: 90px; flex: none;
+        color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .row > .actions::before { content: none; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   `,
 })
 export class AdminCategoriesPage {

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 import type { Paginated, TicketStatus } from '@eventia/shared';
-import { NotFoundError } from '../common/app-error.js';
+import { ConflictError, NotFoundError } from '../common/app-error.js';
 import { Ticket } from '../entities/ticket.entity.js';
 import { TicketQueryDto } from './dto/ticket-query.dto.js';
 
@@ -80,6 +80,23 @@ export class TicketsService {
       withDeleted: true,
     });
     if (!ticket) throw new NotFoundError('TICKET_NOT_FOUND', 'Ticket not found');
+    return toView(ticket);
+  }
+
+  async cancelTicket(ticketId: string): Promise<TicketView> {
+    const ticket = await this.dataSource.getRepository(Ticket).findOne({
+      where: { id: ticketId },
+      relations: TICKET_RELATIONS,
+    });
+    if (!ticket) throw new NotFoundError('TICKET_NOT_FOUND', 'Ticket not found');
+    if (ticket.status !== 'valid') {
+      throw new ConflictError(
+        'TICKET_NOT_CANCELLABLE',
+        `Only valid tickets can be cancelled (current status: ${ticket.status})`,
+      );
+    }
+    ticket.status = 'cancelled';
+    await this.dataSource.getRepository(Ticket).save(ticket);
     return toView(ticket);
   }
 }

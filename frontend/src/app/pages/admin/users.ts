@@ -12,10 +12,10 @@ import type { UserRole } from '@eventia/shared';
   selector: 'app-admin-users',
   imports: [FormsModule, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Users</h1>
 
-      <app-admin-nav />
 
       <form class="filters" (ngSubmit)="search()" data-testid="users-search-form">
         <div class="form-field search">
@@ -49,10 +49,11 @@ import type { UserRole } from '@eventia/shared';
           </div>
           @for (u of users(); track u.id) {
             <div class="row" [attr.data-testid]="'user-' + u.id">
-              <span class="name">{{ u.name }}</span>
-              <span class="email">{{ u.email }}</span>
-              <span class="date">{{ signupDate(u.createdAt) }}</span>
-              <select
+              <span class="name" data-label="Name">{{ u.name }}</span>
+              <span class="email" data-label="Email">{{ u.email }}</span>
+              <span class="date" data-label="Joined">{{ signupDate(u.createdAt) }}</span>
+              <span class="role-cell" data-label="Role">
+                <select
                 class="field role"
                 [ngModel]="pendingRole(u.id) ?? u.role"
                 (ngModelChange)="setRole(u.id, $event)"
@@ -62,6 +63,7 @@ import type { UserRole } from '@eventia/shared';
                 <option value="customer">customer</option>
                 <option value="admin">admin</option>
               </select>
+              </span>
               <button
                 class="btn btn-sm btn-primary"
                 type="button"
@@ -91,7 +93,8 @@ import type { UserRole } from '@eventia/shared';
           >Next</button>
         </div>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .filters { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -107,6 +110,14 @@ import type { UserRole } from '@eventia/shared';
     @media (max-width: 760px) {
       .head { display: none; }
       .row { grid-template-columns: 1fr; }
+      .row > *:not(button) { display: flex; align-items: baseline; gap: 10px; }
+      .row > *::before {
+        content: attr(data-label); min-width: 90px; flex: none;
+        color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .role-cell { flex-direction: column; align-items: stretch !important; }
+      .role-cell::before { align-self: flex-start; }
+      .row > button::before { content: none; }
     }
   `,
 })

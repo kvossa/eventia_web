@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Loading } from '../../components/loading';
+import { AdminNav } from '../../components/admin-nav';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
 import { formatCents } from '../../core/format';
@@ -10,8 +11,9 @@ import type { OrderStatus } from '@eventia/shared';
 
 @Component({
   selector: 'app-admin-order-detail',
-  imports: [FormsModule, RouterLink, Loading],
+  imports: [FormsModule, RouterLink, Loading, AdminNav],
   template: `
+    <app-admin-nav>
     <div class="page">
       @if (loading()) {
         <app-loading />
@@ -71,9 +73,24 @@ import type { OrderStatus } from '@eventia/shared';
             <div class="item" [attr.data-testid]="'admin-order-item-' + it.id">
               <div class="item-main">
                 <span class="strong">{{ it.event.name }}</span>
-                <span class="muted">{{ it.ticketType?.name ?? 'Ticket' }}</span>
+                <span class="muted">{{ it.ticketType?.name ?? 'Ticket' }} · ×{{ it.quantity }}</span>
+                @for (t of it.tickets; track t.id) {
+                  <div class="ticket-row" [attr.data-testid]="'admin-order-ticket-' + t.id">
+                    <span class="badge {{ t.status }}">{{ t.status }}</span>
+                    <span class="muted">{{ t.seatLabel ?? 'General admission' }}</span>
+                    @if (t.status === 'valid') {
+                      <button
+                        type="button"
+                        class="link-btn danger"
+                        [disabled]="busy()"
+                        (click)="cancelTicket(o.id, t.id)"
+                        [attr.data-testid]="'admin-ticket-cancel-' + t.id"
+                      >Cancel</button>
+                    }
+                  </div>
+                }
               </div>
-              <span class="muted">×{{ it.quantity }}</span>
+              <span class="muted">{{ formatCents(it.unitPriceCents) }} each</span>
               <span>{{ formatCents(it.subtotalCents) }}</span>
             </div>
           }
@@ -94,7 +111,8 @@ import type { OrderStatus } from '@eventia/shared';
           <a class="btn btn-primary" routerLink="/admin/orders">← Back to orders</a>
         </div>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
@@ -108,11 +126,15 @@ import type { OrderStatus } from '@eventia/shared';
     .items { margin-top: 16px; }
     .item { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--color-border); }
     .item:last-child { border-bottom: none; }
-    .item-main { display: flex; flex-direction: column; }
+    .item-main { display: flex; flex-direction: column; gap: 4px; }
+    .ticket-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0 2px; }
+    .link-btn { background: none; border: none; color: var(--color-text-dim); cursor: pointer; padding: 0; font-size: 0.85rem; text-decoration: underline; }
+    .link-btn.danger { color: var(--color-danger); }
     .refund-row { margin-top: 20px; }
     @media (max-width: 600px) {
       .head { flex-direction: column; }
       .inline { flex-wrap: wrap; }
+      .item { grid-template-columns: 1fr; }
     }
   `,
 })
@@ -181,6 +203,7 @@ export class AdminOrderDetailPage {
   async refund(): Promise<void> {
     const o = this.order();
     if (!o || o.status === 'refunded') return;
+    if (!window.confirm(`Refund order ${o.orderNumber}? All its tickets will be refunded and stock restored.`)) return;
     this.busy.set(true);
     try {
       const updated = await this.api.adminOrderRefund(o.id);
@@ -190,6 +213,20 @@ export class AdminOrderDetailPage {
     } catch (err) {
       this.toast.show('error', (err as Error).message);
       await this.load(o.id);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  async cancelTicket(orderId: string, ticketId: string): Promise<void> {
+    if (!window.confirm('Cancel this ticket? It will be voided and its seat freed.')) return;
+    this.busy.set(true);
+    try {
+      await this.api.adminCancelTicket(ticketId);
+      this.toast.show('success', 'Ticket cancelled.');
+      await this.load(orderId);
+    } catch (err) {
+      this.toast.show('error', (err as Error).message);
     } finally {
       this.busy.set(false);
     }

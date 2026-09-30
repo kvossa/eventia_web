@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { OrderStatus } from '@eventia/shared';
 import type { AuthUserPayload } from '../common/decorators/current-user.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { OrderQueryDto } from './dto/order-query.dto.js';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
 import { OrdersService } from './orders.service.js';
 
 @ApiTags('orders')
@@ -71,8 +71,8 @@ export class AdminOrdersController {
   @Roles('admin')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change order status (admin)' })
-  setStatus(@Param('id') id: string, @Body() body: { status: OrderStatus }) {
-    return this.ordersService.setStatus(id, body.status);
+  setStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
+    return this.ordersService.setStatus(id, dto.status);
   }
 
   @Post(':id/refund')

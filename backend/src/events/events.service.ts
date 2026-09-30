@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Paginated, EventAvailability, EventStatus } from '@eventia/shared';
+import {
+  Paginated,
+  EventAdminWriteableStatus,
+  EventAvailability,
+  EventStatus,
+  EVENT_ADMIN_WRITEABLE_STATUSES,
+} from '@eventia/shared';
 import { In, Repository } from 'typeorm';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
 import { CartItemSeat } from '../entities/cart-item-seat.entity.js';
@@ -358,6 +364,9 @@ export class EventsService {
   }
 
   async setStatus(id: string, status: Event['status']): Promise<Event> {
+    if (![...EVENT_ADMIN_WRITEABLE_STATUSES].includes(status as EventAdminWriteableStatus)) {
+      throw new ValidationError(`Invalid status: ${status}`);
+    }
     const event = await this.eventsRepo.findOne({ where: { id } });
     if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
     event.status = status;

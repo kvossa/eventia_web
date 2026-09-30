@@ -12,10 +12,10 @@ import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../..
   selector: 'app-admin-ticket-types',
   imports: [FormsModule, RouterLink, AdminNav, Loading],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Ticket types</h1>
 
-      <app-admin-nav />
 
       @if (loading()) {
         <app-loading />
@@ -40,11 +40,11 @@ import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../..
           </div>
           @for (t of event()!.ticketTypes; track t.id) {
             <div class="row" [attr.data-testid]="'admin-ticket-type-' + t.id">
-              <div class="name">{{ t.name }}</div>
-              <div class="price">{{ formatCents(t.priceCents) }}</div>
-              <div class="sold">{{ t.quantitySold }} / {{ t.quantity }}</div>
-              <div class="visible">{{ t.isVisible ? 'yes' : 'no' }}</div>
-              <div class="window">
+              <div class="name" data-label="Type">{{ t.name }}</div>
+              <div class="price" data-label="Price">{{ formatCents(t.priceCents) }}</div>
+              <div class="sold" data-label="Sold">{{ t.quantitySold }} / {{ t.quantity }}</div>
+              <div class="visible" data-label="Visible">{{ t.isVisible ? 'yes' : 'no' }}</div>
+              <div class="window" data-label="Sales window">
                 @if (t.salesStartsAt || t.salesEndsAt) {
                   {{ t.salesStartsAt ? shortDateTime(t.salesStartsAt) : '—' }} →
                   {{ t.salesEndsAt ? shortDateTime(t.salesEndsAt) : '—' }}
@@ -52,7 +52,7 @@ import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../..
                   open
                 }
               </div>
-              <div class="max">{{ t.maxPerCustomer ?? '—' }}</div>
+              <div class="max" data-label="Max per customer">{{ t.maxPerCustomer ?? '—' }}</div>
               <div class="actions">
                 @if (editingId() === t.id) {
                   <button type="button" class="link-btn" (click)="cancelEdit()">Cancel</button>
@@ -160,7 +160,8 @@ import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../..
           <p>Could not load this event.</p>
         </div>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .crumb { display: flex; gap: 8px; align-items: center; color: var(--color-text-dim); font-size: 0.9rem; margin-bottom: 18px; }
@@ -194,9 +195,20 @@ import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../..
     .actions { display: flex; gap: 12px; margin-top: 4px; }
     @media (max-width: 900px) {
       .head { display: none; }
-      .row { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
     }
-    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .row { grid-template-columns: 1fr 1fr; }
+      .row > * { display: flex; align-items: baseline; gap: 8px; }
+      .row > *::before {
+        content: attr(data-label); min-width: 82px; flex: none;
+        color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .window { grid-column: 1 / -1; flex-direction: column; }
+      .window::before { align-self: flex-start; }
+      .actions { grid-column: 1 / -1; }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
   `,
 })
 export class AdminTicketTypesPage {

@@ -8,16 +8,16 @@ import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
 import { formatCents } from '../../core/format';
 import { Category, EventListItem } from '../../core/models';
-import type { EventStatus } from '@eventia/shared';
+import type { EventAdminWriteableStatus, EventStatus } from '@eventia/shared';
 
 @Component({
   selector: 'app-admin-events',
   imports: [FormsModule, RouterLink, AdminNav, Loading, AvailabilityBadge],
   template: `
+    <app-admin-nav>
     <div class="page">
       <h1 class="page-title">Events</h1>
 
-      <app-admin-nav />
 
       <div class="toolbar">
         <a class="btn btn-primary" routerLink="/admin/events/new" data-testid="admin-event-create">
@@ -77,25 +77,25 @@ import type { EventStatus } from '@eventia/shared';
           </div>
           @for (e of events(); track e.id) {
             <div class="row" [attr.data-testid]="'admin-event-' + e.id">
-              <div class="event-name">
+              <div class="event-name" data-label="Event">
                 <a routerLink="/admin/events/{{ e.id }}/edit">{{ e.name }}</a>
                 <span class="muted">{{ e.city }}</span>
               </div>
-              <div class="date">{{ shortDate(e.dateTime) }}</div>
-              <div class="chip tag-{{ e.status }}">{{ e.status }}</div>
+              <div class="date" data-label="When">{{ shortDate(e.dateTime) }}</div>
+              <div class="chip tag-{{ e.status }}" data-label="Status">{{ e.status }}</div>
               <app-availability-badge [state]="e.availability.state" />
-              <div class="price">{{ e.fromPriceCents ? formatCents(e.fromPriceCents) : '—' }}</div>
-              <div class="featured">{{ e.featured ? '★' : '' }}</div>
-              <div class="action-links">
+              <div class="price" data-label="From">{{ e.fromPriceCents ? formatCents(e.fromPriceCents) : '—' }}</div>
+              <div class="featured" data-label="Featured">{{ e.featured ? '★' : '' }}</div>
+              <div class="action-links" data-label="Actions">
                 <a [routerLink]="['/admin/events', e.id, 'ticket-types']">Ticket types</a>
                 <a [routerLink]="['/admin/events', e.id, 'edit']">Edit</a>
                 @if (e.status !== 'published') {
-                  <button type="button" class="link-btn" (click)="publish(e.id)">Publish</button>
+                  <button type="button" class="link-btn" (click)="setStatus(e.id, 'published')">Publish</button>
                 } @else {
-                  <button type="button" class="link-btn" (click)="unpublish(e.id)">Unpublish</button>
+                  <button type="button" class="link-btn" (click)="setStatus(e.id, 'draft')">Unpublish</button>
                 }
                 @if (e.status !== 'sold_out') {
-                  <button type="button" class="link-btn" (click)="markSoldOut(e.id)">Sold out</button>
+                  <button type="button" class="link-btn" (click)="setStatus(e.id, 'sold_out')">Sold out</button>
                 }
                 <button type="button" class="link-btn" (click)="duplicate(e.id)">Duplicate</button>
                 <button type="button" class="link-btn danger" (click)="remove(e.id)">Delete</button>
@@ -122,7 +122,8 @@ import type { EventStatus } from '@eventia/shared';
           >Next</button>
         </div>
       }
-    </div>
+      </div>
+    </app-admin-nav>
   `,
   styles: `
     .toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
@@ -154,7 +155,16 @@ import type { EventStatus } from '@eventia/shared';
     .page-num { color: var(--color-text-dim); font-size: 0.9rem; }
     @media (max-width: 900px) {
       .head { display: none; }
-      .row { grid-template-columns: 1fr 1fr; }
+      .row { grid-template-columns: 1fr 1fr; row-gap: 10px; }
+    }
+    @media (max-width: 640px) {
+      .row { grid-template-columns: 1fr; }
+      .row > *:not(.action-links) { display: flex; align-items: baseline; gap: 10px; }
+      .row > *::before {
+        content: attr(data-label); min-width: 90px; flex: none;
+        color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .row > .action-links::before { content: none; }
     }
   `,
 })
@@ -210,30 +220,16 @@ export class AdminEventsPage {
     }
   }
 
-  async publish(id: string): Promise<void> {
-    try {
-      await this.api.eventPublish(id);
-      this.toast.show('success', 'Event published.');
-      await this.load(this.page());
-    } catch (err) {
-      this.toast.show('error', (err as Error).message);
-    }
-  }
+  private readonly statusMessages: Record<EventAdminWriteableStatus, string> = {
+    draft: 'Event unpublished.',
+    published: 'Event published.',
+    sold_out: 'Event marked sold out.',
+  };
 
-  async unpublish(id: string): Promise<void> {
+  async setStatus(id: string, status: EventAdminWriteableStatus): Promise<void> {
     try {
-      await this.api.eventUnpublish(id);
-      this.toast.show('success', 'Event unpublished.');
-      await this.load(this.page());
-    } catch (err) {
-      this.toast.show('error', (err as Error).message);
-    }
-  }
-
-  async markSoldOut(id: string): Promise<void> {
-    try {
-      await this.api.eventMarkSoldOut(id);
-      this.toast.show('success', 'Event marked sold out.');
+      await this.api.adminSetEventStatus(id, status);
+      this.toast.show('success', this.statusMessages[status]);
       await this.load(this.page());
     } catch (err) {
       this.toast.show('error', (err as Error).message);

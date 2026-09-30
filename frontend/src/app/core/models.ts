@@ -1,4 +1,5 @@
 import type {
+  EventAdminWriteableStatus,
   EventAvailabilityState,
   EventStatus,
   NotificationChannel,
