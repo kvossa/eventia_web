@@ -172,7 +172,7 @@ describe('AdminVenueLayoutPage', () => {
 
   it('deletes a row only after confirmation', async () => {
     const { fixture, api, toast } = await setup();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     await fixture.componentInstance.deleteRow(SECTION.rows[0]);
     expect(api.rowRemove).toHaveBeenCalledWith('r1');

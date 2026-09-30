@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { ApiError, Cart, CartLine } from './models';
 
@@ -9,7 +9,7 @@ export class CartService {
   readonly count = computed(() => this.items().reduce((sum, item) => sum + item.quantity, 0));
   readonly loaded = signal(false);
 
-  constructor(private readonly api: ApiService) {}
+  private readonly api = inject(ApiService);
 
   async load(): Promise<void> {
     const cart = await this.api.get<Cart>('/cart');

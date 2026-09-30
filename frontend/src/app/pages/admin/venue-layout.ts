@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminNav } from '../../components/admin-nav';
@@ -162,7 +162,7 @@ import { RowView, SectionView } from '../../core/models';
     @media (max-width: 760px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
   `,
 })
-export class AdminVenueLayoutPage {
+export class AdminVenueLayoutPage implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly sections = signal<SectionView[]>([]);

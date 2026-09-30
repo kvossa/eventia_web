@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
@@ -54,7 +54,7 @@ import { OrderDetailView } from '../../core/models';
     .cancel-row { margin: 18px 0; }
   `,
 })
-export class MyOrderDetailPage {
+export class MyOrderDetailPage implements OnInit {
   readonly loading = signal(true);
   readonly cancelling = signal(false);
   readonly order = signal<OrderDetailView | null>(null);

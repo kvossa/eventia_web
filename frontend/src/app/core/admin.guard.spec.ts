@@ -86,7 +86,7 @@ describe('adminGuard', () => {
     auth.user.set(customer);
     auth.isAuthenticated.set(true);
 
-    const result = await Promise.resolve(run());
+    await Promise.resolve(run());
 
     expect(createUrlTree).toHaveBeenCalledWith(['/']);
   });

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminNav } from '../../components/admin-nav';
 import { Loading } from '../../components/loading';
@@ -121,7 +121,7 @@ import type { UserRole } from '@eventia/shared';
     }
   `,
 })
-export class AdminUsersPage {
+export class AdminUsersPage implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly users = signal<PublicUser[]>([]);

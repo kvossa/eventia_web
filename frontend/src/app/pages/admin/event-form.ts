@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminNav } from '../../components/admin-nav';
@@ -161,7 +161,7 @@ const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
     @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
   `,
 })
-export class AdminEventFormPage {
+export class AdminEventFormPage implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly uploadingImage = signal(false);

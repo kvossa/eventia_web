@@ -1,11 +1,11 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationsService {
   readonly unreadCount = signal(0);
 
-  constructor(private readonly api: ApiService) {}
+  private readonly api = inject(ApiService);
 
   async refresh(): Promise<void> {
     try {

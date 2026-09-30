@@ -6,15 +6,10 @@
 
 <app-footer />
 
-<div class="toast-stack">
+<div class="toast-stack" aria-live="polite">
   @for (t of toast.toasts(); track t.id) {
-    <div
-      class="toast"
-      [class]="t.type"
-      role="status"
-      (click)="toast.dismiss(t.id)"
-    >
+    <button type="button" class="toast" [class]="t.type" (click)="toast.dismiss(t.id)">
       {{ t.message }}
-    </div>
+    </button>
   }
 </div>

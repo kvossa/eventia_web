@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
@@ -92,7 +92,7 @@ import { NotificationView } from '../../core/models';
     .more { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 14px; }
   `,
 })
-export class MyNotificationsPage {
+export class MyNotificationsPage implements OnInit {
   readonly loading = signal(true);
   readonly markingAll = signal(false);
   readonly items = signal<NotificationView[]>([]);

@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AvailabilityBadge } from '../../components/availability-badge';
 import { Loading } from '../../components/loading';
@@ -48,7 +48,7 @@ import { FavoriteView } from '../../core/models';
     </div>
   `,
 })
-export class MyFavoritesPage {
+export class MyFavoritesPage implements OnInit {
   readonly loading = signal(true);
   readonly removing = signal(false);
   readonly items = signal<FavoriteView[]>([]);

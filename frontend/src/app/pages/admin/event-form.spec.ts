@@ -72,8 +72,6 @@ describe('AdminEventFormPage optional fields', () => {
 
   beforeEach(() => TestBed.resetTestingModule());
 
-  const form = (): EventFormValue => fixture.componentInstance['value'] as unknown as EventFormValue;
-
   it('sends the optional fields it loaded so saving them is lossless', async () => {
     await setup();
     fixture.componentInstance['value'].description = '  Fresh description  ';

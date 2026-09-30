@@ -1,9 +1,9 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
-import { UserUpdateInput, PasswordChangeInput, ProfileView, PasswordChangeResponse } from '../../core/models';
+import { UserUpdateInput, PasswordChangeInput, ProfileView } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 
 @Component({

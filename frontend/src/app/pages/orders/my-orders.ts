@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
@@ -54,7 +54,7 @@ import { MyOrderListItem } from '../../core/models';
     </div>
   `,
 })
-export class MyOrdersPage {
+export class MyOrdersPage implements OnInit {
   readonly loading = signal(true);
   readonly orders = signal<MyOrderListItem[]>([]);
   readonly page = signal(1);

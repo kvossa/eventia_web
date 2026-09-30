@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Loading } from '../../components/loading';
@@ -138,7 +138,7 @@ import type { OrderStatus } from '@eventia/shared';
     }
   `,
 })
-export class AdminOrderDetailPage {
+export class AdminOrderDetailPage implements OnInit {
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly order = signal<OrderDetailView | null>(null);

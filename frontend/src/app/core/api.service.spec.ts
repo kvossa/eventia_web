@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { HttpClient } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { ApiService } from './api.service';
 
-const service = new ApiService({} as HttpClient);
+TestBed.configureTestingModule({ providers: [provideHttpClient()] });
+
+const service = TestBed.runInInjectionContext(() => new ApiService());
 const url = (path: string): string =>
   (service as unknown as { url: (p: string) => string }).url(path);
 

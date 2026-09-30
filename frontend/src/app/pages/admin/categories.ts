@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminNav } from '../../components/admin-nav';
 import { Loading } from '../../components/loading';
@@ -112,7 +112,7 @@ import { Category, CategoryInput } from '../../core/models';
     }
   `,
 })
-export class AdminCategoriesPage {
+export class AdminCategoriesPage implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly categories = signal<Category[]>([]);

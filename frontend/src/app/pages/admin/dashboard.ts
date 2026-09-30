@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { AdminNav } from '../../components/admin-nav';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
@@ -72,7 +72,7 @@ interface StatCard {
     }
   `,
 })
-export class AdminDashboardPage {
+export class AdminDashboardPage implements OnInit {
   readonly loading = signal(true);
   readonly stats = signal<AdminStats | null>(null);
 

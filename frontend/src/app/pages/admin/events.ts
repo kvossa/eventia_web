@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AdminNav } from '../../components/admin-nav';
@@ -168,7 +168,7 @@ import type { EventAdminWriteableStatus, EventStatus } from '@eventia/shared';
     }
   `,
 })
-export class AdminEventsPage {
+export class AdminEventsPage implements OnInit {
   readonly loading = signal(true);
   readonly events = signal<EventListItem[]>([]);
   readonly categories = signal<Category[]>([]);

@@ -10,17 +10,6 @@ import { Category, EventListItem, Paginated } from '../../core/models';
 
 const PAGE_SIZE = 12;
 
-interface Filters {
-  q?: string;
-  category?: string;
-  city?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  priceMin?: number;
-  priceMax?: number;
-  page?: number;
-}
-
 @Component({
   selector: 'app-events-list',
   imports: [ReactiveFormsModule, RouterLink, EventCard, Loading, EmptyState],

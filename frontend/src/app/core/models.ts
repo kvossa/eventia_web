@@ -1,5 +1,4 @@
 import type {
-  EventAdminWriteableStatus,
   EventAvailabilityState,
   EventStatus,
   NotificationChannel,
@@ -243,7 +242,7 @@ export interface FavoriteView extends EventListItem {
   favoritedAt: string;
 }
 
-export interface MyOrderListItem extends OrderDetailView {}
+export type MyOrderListItem = OrderDetailView;
 
 export interface NotificationPreferencesInput {
   emailNotifications: boolean;

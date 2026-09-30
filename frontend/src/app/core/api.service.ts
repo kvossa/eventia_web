@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { lastValueFrom } from 'rxjs';
 import { environment } from './env';
 import {
@@ -49,7 +49,7 @@ import type { EventAdminWriteableStatus, OrderStatus, UserRole } from '@eventia/
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
     return this.request(() =>

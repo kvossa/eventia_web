@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AdminNav } from '../../components/admin-nav';
@@ -211,7 +211,7 @@ import { EventDetail, TicketType, TicketTypeInput, VenueLayoutView } from '../..
     }
   `,
 })
-export class AdminTicketTypesPage {
+export class AdminTicketTypesPage implements OnInit {
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly event = signal<EventDetail | null>(null);

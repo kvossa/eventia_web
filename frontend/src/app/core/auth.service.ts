@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { AuthResponse, User } from './models';
 
@@ -30,7 +30,7 @@ export class AuthService {
 
   private refreshInFlight: Promise<boolean> | null = null;
 
-  constructor(private readonly api: ApiService) {}
+  private readonly api = inject(ApiService);
 
   async initialize(): Promise<void> {
     if (!this.accessToken()) return;

@@ -11,7 +11,14 @@ import { ToastService } from '../core/toast.service';
   template: `
     <header class="header">
       <a class="brand" routerLink="/">eventia</a>
-      <nav class="nav" [class.open]="menuOpen()" (click)="menuOpen.set(false)" data-testid="header-nav">
+      <nav
+        class="nav"
+        [class.open]="menuOpen()"
+        (click)="menuOpen.set(false)"
+        (keydown.escape)="menuOpen.set(false)"
+        tabindex="-1"
+        data-testid="header-nav"
+      >
         <a routerLink="/events" routerLinkActive="active">Events</a>
         @if (auth.isAuthenticated()) {
           <a routerLink="/my-tickets" routerLinkActive="active">My Tickets</a>
