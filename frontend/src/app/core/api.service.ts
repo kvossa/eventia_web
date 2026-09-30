@@ -75,6 +75,12 @@ export class ApiService {
     return this.request(() => lastValueFrom(this.http.delete<T>(this.url(path))));
   }
 
+  upload<T>(path: string, file: File, field = 'file'): Promise<T> {
+    const form = new FormData();
+    form.append(field, file, file.name);
+    return this.request(() => lastValueFrom(this.http.post<T>(this.url(path), form)));
+  }
+
   me<T = ProfileView>(): Promise<T> {
     return this.get<T>('/users/me');
   }
@@ -278,6 +284,10 @@ export class ApiService {
 
   adminSetEventStatus(id: string, status: EventAdminWriteableStatus): Promise<EventListItem> {
     return this.patch<EventListItem>(`/admin/events/${id}/status`, { status });
+  }
+
+  adminEventImage(id: string, file: File): Promise<EventDetail> {
+    return this.upload<EventDetail>(`/admin/events/${id}/image`, file);
   }
 
   eventDuplicate(id: string): Promise<EventListItem> {

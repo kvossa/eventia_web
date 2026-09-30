@@ -373,6 +373,14 @@ export class EventsService {
     return this.eventsRepo.save(event);
   }
 
+  async setImage(id: string, imageUrl: string): Promise<EventDetail> {
+    const event = await this.eventsRepo.findOne({ where: { id } });
+    if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');
+    event.imageUrl = imageUrl;
+    await this.eventsRepo.save(event);
+    return this.detailAdmin(id);
+  }
+
   async remove(id: string): Promise<void> {
     const event = await this.eventsRepo.findOne({ where: { id } });
     if (!event) throw new NotFoundError('EVENT_NOT_FOUND', 'Event not found');

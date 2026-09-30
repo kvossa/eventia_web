@@ -7,6 +7,8 @@ import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
 import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../core/models';
 
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+
 @Component({
   selector: 'app-admin-event-form',
   imports: [FormsModule, RouterLink, AdminNav, Loading],
@@ -101,6 +103,24 @@ import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../c
             <div class="form-field">
               <label for="imageUrl">Image URL</label>
               <input id="imageUrl" class="field" name="imageUrl" [(ngModel)]="value.imageUrl" data-testid="event-form-imageUrl" />
+              @if (eventId()) {
+                <label class="upload-label" for="eventImage">or upload an image</label>
+                <input
+                  id="eventImage"
+                  class="field"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  (change)="onImageSelected($event)"
+                  [disabled]="uploadingImage()"
+                  data-testid="event-form-imageFile"
+                />
+                <small class="hint">PNG, JPEG, WebP or GIF up to 2 MB.</small>
+                @if (uploadingImage()) {
+                  <small class="hint">Uploading…</small>
+                } @else if (value.imageUrl) {
+                  <img class="preview" [src]="value.imageUrl" alt="Event image preview" data-testid="event-form-imagePreview" />
+                }
+              }
             </div>
             <div class="form-field check">
               <label class="check-label">
@@ -134,6 +154,9 @@ import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../c
     .form-field label { font-size: 0.85rem; color: var(--color-text-dim); }
     .check { justify-content: flex-end; }
     .check-label { display: flex; align-items: center; gap: 8px; font-size: 0.95rem; color: var(--color-text); cursor: pointer; padding-bottom: 10px; }
+    .upload-label { margin-top: 6px; }
+    .hint { color: var(--color-text-dim); font-size: 0.78rem; }
+    .preview { max-width: 180px; max-height: 110px; border-radius: 8px; border: 1px solid var(--color-border); object-fit: cover; }
     .actions { display: flex; gap: 12px; margin-top: 4px; }
     @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
   `,
@@ -141,6 +164,7 @@ import { Category, EventDetail, EventFormValue, Organizer, Venue } from '../../c
 export class AdminEventFormPage {
   readonly loading = signal(true);
   readonly saving = signal(false);
+  readonly uploadingImage = signal(false);
   readonly eventId = signal<string | null>(null);
   readonly categories = signal<Category[]>([]);
   readonly venues = signal<Venue[]>([]);
@@ -197,6 +221,28 @@ export class AdminEventFormPage {
       this.toast.show('error', (err as Error).message);
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  async onImageSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const id = this.eventId();
+    input.value = '';
+    if (!file || !id) return;
+    if (file.size > MAX_IMAGE_BYTES) {
+      this.toast.show('error', 'Image must be 2 MB or smaller.');
+      return;
+    }
+    this.uploadingImage.set(true);
+    try {
+      const updated = await this.api.adminEventImage(id, file);
+      this.value.imageUrl = updated.imageUrl ?? '';
+      this.toast.show('success', 'Image uploaded.');
+    } catch (err) {
+      this.toast.show('error', (err as Error).message);
+    } finally {
+      this.uploadingImage.set(false);
     }
   }
 

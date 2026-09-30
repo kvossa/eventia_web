@@ -1,19 +1,22 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module.js';
+import { UPLOADS_URL_PREFIX, UPLOAD_ROOT } from './common/uploads.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api/v1');
 
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cookieParser());
+  app.useStaticAssets(UPLOAD_ROOT, { prefix: `${UPLOADS_URL_PREFIX}/` });
 
   app.enableCors({
     origin: (config.get<string>('CORS_ORIGINS') ?? 'http://localhost:4200').split(','),

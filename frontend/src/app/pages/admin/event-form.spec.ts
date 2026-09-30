@@ -13,6 +13,7 @@ type ApiMock = {
   adminEvent: ReturnType<typeof vi.fn>;
   eventUpdate: ReturnType<typeof vi.fn>;
   eventCreate: ReturnType<typeof vi.fn>;
+  adminEventImage: ReturnType<typeof vi.fn>;
 };
 
 const existingEvent = {
@@ -47,6 +48,7 @@ describe('AdminEventFormPage optional fields', () => {
       adminEvent: vi.fn().mockResolvedValue(existingEvent),
       eventUpdate: vi.fn().mockResolvedValue(existingEvent),
       eventCreate: vi.fn().mockResolvedValue(existingEvent),
+      adminEventImage: vi.fn().mockResolvedValue({ ...existingEvent, imageUrl: 'http://localhost:3000/uploads/events/new.png' }),
     };
 
     await TestBed.configureTestingModule({
@@ -62,7 +64,8 @@ describe('AdminEventFormPage optional fields', () => {
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     const created = TestBed.createComponent(AdminEventFormPage);
-    await created.componentInstance.ngOnInit();
+    created.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     created.detectChanges();
     fixture = created;
   };
@@ -119,5 +122,66 @@ describe('AdminEventFormPage optional fields', () => {
     expect(body.description).toBeNull();
     expect(body.imageUrl).toBeNull();
     expect(body.maxCapacity).toBeNull();
+  });
+
+  it('uploads a chosen image, adopts the returned URL and previews it', async () => {
+    await setup();
+    const file = new File(['x'], 'poster.png', { type: 'image/png' });
+    const picker = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="event-form-imageFile"]',
+    ) as HTMLInputElement;
+    const form = (): EventFormValue => fixture.componentInstance['value'] as unknown as EventFormValue;
+
+    expect(picker).toBeTruthy();
+    expect(form().imageUrl).toBe('https://example.com/old.png');
+
+    await fixture.componentInstance.onImageSelected({
+      target: { files: [file], value: 'C:\\fakepath\\poster.png' },
+    } as unknown as Event);
+    fixture.detectChanges();
+
+    expect(api.adminEventImage).toHaveBeenCalledWith('e1', file);
+    expect(form().imageUrl).toBe('http://localhost:3000/uploads/events/new.png');
+    const preview = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="event-form-imagePreview"]',
+    ) as HTMLImageElement;
+    expect(preview?.getAttribute('src')).toBe('http://localhost:3000/uploads/events/new.png');
+    expect(fixture.componentInstance.uploadingImage()).toBe(false);
+  });
+
+  it('rejects files over 2 MB and surfaces upload errors', async () => {
+    await setup();
+    const toast = TestBed.inject(ToastService).show as ReturnType<typeof vi.fn>;
+    const form = (): EventFormValue => fixture.componentInstance['value'] as unknown as EventFormValue;
+    const big = new File(['x'], 'huge.png', { type: 'image/png' });
+    Object.defineProperty(big, 'size', { value: 2 * 1024 * 1024 + 1, configurable: true });
+
+    await fixture.componentInstance.onImageSelected({ target: { files: [big], value: '' } } as unknown as Event);
+
+    expect(api.adminEventImage).not.toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith('error', 'Image must be 2 MB or smaller.');
+
+    const small = new File(['x'], 'ok.png', { type: 'image/png' });
+    api.adminEventImage.mockRejectedValueOnce(new Error('upload boom'));
+    await fixture.componentInstance.onImageSelected({ target: { files: [small], value: '' } } as unknown as Event);
+
+    expect(toast).toHaveBeenCalledWith('error', 'upload boom');
+    expect(fixture.componentInstance.uploadingImage()).toBe(false);
+    expect(form().imageUrl).toBe('https://example.com/old.png');
+  });
+
+  it('ignores a change without a file and resets the picker', async () => {
+    await setup();
+    const target = { files: [], value: 'C:\\fakepath\\poster.png' };
+
+    await fixture.componentInstance.onImageSelected({ target } as unknown as Event);
+
+    expect(api.adminEventImage).not.toHaveBeenCalled();
+    expect(target.value).toBe('');
+  });
+
+  it('hides the upload control when creating a new event', async () => {
+    await setup(null);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[data-testid="event-form-imageFile"]')).toBeNull();
   });
 });

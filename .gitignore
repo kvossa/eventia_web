@@ -6,6 +6,9 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Runtime uploads (event images)
+uploads/
+
 # Environment & secrets
 .env
 *.local
