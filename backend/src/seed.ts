@@ -21,10 +21,13 @@ import {
   SEED_FAVORITES,
   SEED_ORGANIZERS,
   SEED_VENUES,
+  SEED_VENUE_LAYOUTS,
   type SeedEvent,
 } from './seed-data.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 const BCRYPT_COST = 12;
 const created: Record<string, number> = {};
 
@@ -128,6 +131,24 @@ async function seedVenues(): Promise<Map<string, Venue>> {
 
 const toDate = (inDays: number): Date => new Date(Date.now() + inDays * DAY_MS);
 
+const toDateTime = (inDays: number, time?: string): Date => {
+  const day = toDate(inDays);
+  if (!time) return day;
+  const [hours, minutes] = time.split(':').map((part) => Number.parseInt(part, 10));
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    throw new Error(`Invalid seed time "${time}" for event date, expected HH:MM (UTC)`);
+  }
+  const midnight = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate());
+  return new Date(midnight + hours * HOUR_MS + minutes * MINUTE_MS);
+};
+
 async function ensureRow(
   sectionId: string,
   label: string,
@@ -146,17 +167,26 @@ async function ensureRow(
 }
 
 async function seedVenueLayouts(): Promise<void> {
-  const venue = await AppDataSource.getRepository(Venue).findOneBy({ name: 'Grand Arena' });
-  if (!venue) return;
+  const venuesRepo = AppDataSource.getRepository(Venue);
   const sectionsRepo = AppDataSource.getRepository(Section);
-  if ((await sectionsRepo.count({ where: { venueId: venue.id } })) > 0) return;
+  let seeded = 0;
 
-  const floor = await sectionsRepo.save(sectionsRepo.create({ venueId: venue.id, name: 'Floor', sortOrder: 0 }));
-  await ensureRow(floor.id, 'A', 12, [1]);
-  await ensureRow(floor.id, 'B', 10, []);
-  const balcony = await sectionsRepo.save(sectionsRepo.create({ venueId: venue.id, name: 'Balcony', sortOrder: 1 }));
-  await ensureRow(balcony.id, '1', 8, []);
-  created.layouts = 1;
+  for (const layout of SEED_VENUE_LAYOUTS) {
+    const venue = await venuesRepo.findOneBy({ name: layout.venueName });
+    if (!venue) continue;
+    if ((await sectionsRepo.count({ where: { venueId: venue.id } })) > 0) continue;
+
+    for (const [sectionIndex, section] of layout.sections.entries()) {
+      const saved = await sectionsRepo.save(
+        sectionsRepo.create({ venueId: venue.id, name: section.name, sortOrder: sectionIndex }),
+      );
+      for (const row of section.rows) {
+        await ensureRow(saved.id, row.label, row.seats, row.accessibleSeats ?? []);
+      }
+    }
+    seeded += 1;
+  }
+  created.layouts = seeded;
 }
 
 async function seedEvent(
@@ -180,7 +210,7 @@ async function seedEvent(
       categoryId: category.id,
       organizerId: organizer.id,
       venueId: venue.id,
-      dateTime: toDate(ev.inDays),
+      dateTime: toDateTime(ev.inDays, ev.time),
       city: ev.city ?? venue.city,
       address: ev.address ?? venue.address,
       maxCapacity: ev.maxCapacity ?? null,

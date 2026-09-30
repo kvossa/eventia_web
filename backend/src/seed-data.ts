@@ -42,6 +42,22 @@ export interface SeedTicketType {
   sections?: string[];
 }
 
+export interface SeedVenueLayoutRow {
+  label: string;
+  seats: number;
+  accessibleSeats?: number[];
+}
+
+export interface SeedVenueLayoutSection {
+  name: string;
+  rows: SeedVenueLayoutRow[];
+}
+
+export interface SeedVenueLayout {
+  venueName: string;
+  sections: SeedVenueLayoutSection[];
+}
+
 export interface SeedEvent {
   name: string;
   description?: string;
@@ -49,6 +65,7 @@ export interface SeedEvent {
   organizerSlug: string;
   venueName: string;
   inDays: number;
+  time?: string;
   status: EventStatus;
   featured?: boolean;
   imageUrl?: string;
@@ -130,6 +147,48 @@ const SEED_VENUES: SeedVenue[] = [
   },
 ];
 
+const SEED_VENUE_LAYOUTS: SeedVenueLayout[] = [
+  {
+    venueName: 'Grand Arena',
+    sections: [
+      {
+        name: 'Floor',
+        rows: [
+          { label: 'A', seats: 12, accessibleSeats: [1] },
+          { label: 'B', seats: 10 },
+        ],
+      },
+      { name: 'Balcony', rows: [{ label: '1', seats: 8 }] },
+    ],
+  },
+  {
+    venueName: 'St. Pauli Arena',
+    sections: [
+      {
+        name: 'Stalls',
+        rows: [
+          { label: 'A', seats: 14, accessibleSeats: [1, 14] },
+          { label: 'B', seats: 12 },
+        ],
+      },
+      { name: 'Balcony', rows: [{ label: '1', seats: 8 }] },
+    ],
+  },
+  {
+    venueName: 'Kulturbrauerei',
+    sections: [
+      {
+        name: 'Main Floor',
+        rows: [
+          { label: 'A', seats: 40, accessibleSeats: [1, 40] },
+          { label: 'B', seats: 40 },
+        ],
+      },
+      { name: 'Gallery', rows: [{ label: '1', seats: 20, accessibleSeats: [20] }] },
+    ],
+  },
+];
+
 const SEED_EVENTS: SeedEvent[] = [
   {
     name: 'Neon Nights Festival',
@@ -138,6 +197,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'night-owl-live',
     venueName: 'Grand Arena',
     inDays: 12,
+    time: '18:00',
     status: 'published',
     featured: true,
     imageUrl: 'https://picsum.photos/seed/neon-festival/1200/600',
@@ -175,6 +235,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'aurora-presents',
     venueName: 'Grand Arena',
     inDays: 30,
+    time: '20:00',
     status: 'published',
     featured: true,
     imageUrl: 'https://picsum.photos/seed/symphony-stars/1200/600',
@@ -203,6 +264,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'city-sounds',
     venueName: 'St. Pauli Arena',
     inDays: 5,
+    time: '20:00',
     status: 'published',
     imageUrl: 'https://picsum.photos/seed/laughing-hour/1200/600',
     ageRestriction: '18+',
@@ -223,6 +285,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'city-sounds',
     venueName: 'Olympiahalle',
     inDays: 45,
+    time: '10:00',
     status: 'published',
     imageUrl: 'https://picsum.photos/seed/city-sports/1200/600',
     maxCapacity: 12000,
@@ -251,6 +314,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'night-owl-live',
     venueName: 'Kulturbrauerei',
     inDays: 8,
+    time: '19:30',
     status: 'published',
     imageUrl: 'https://picsum.photos/seed/indie-nights/1200/600',
     maxCapacity: 1800,
@@ -272,6 +336,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'aurora-presents',
     venueName: 'St. Pauli Arena',
     inDays: 20,
+    time: '19:30',
     status: 'published',
     imageUrl: 'https://picsum.photos/seed/theatre-gala/1200/600',
     maxCapacity: 4200,
@@ -300,6 +365,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'night-owl-live',
     venueName: 'Olympiahalle',
     inDays: 60,
+    time: '18:00',
     status: 'draft',
     imageUrl: 'https://picsum.photos/seed/retro-beats/1200/600',
     maxCapacity: 12000,
@@ -319,6 +385,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'aurora-presents',
     venueName: 'Grand Arena',
     inDays: -30,
+    time: '20:00',
     status: 'published',
     imageUrl: 'https://picsum.photos/seed/last-summer/1200/600',
     maxCapacity: 15000,
@@ -339,6 +406,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'aurora-presents',
     venueName: 'Grand Arena',
     inDays: 18,
+    time: '20:00',
     status: 'published',
     imageUrl: 'https://picsum.photos/seed/symphony-stars/1200/600',
     maxCapacity: 30,
@@ -369,6 +437,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'aurora-presents',
     venueName: 'Grand Arena',
     inDays: 88,
+    time: '19:00',
     status: 'published',
     imageUrl: 'https://picsum.photos/id/57/2448/',
     ticketTypes: [
@@ -398,30 +467,36 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'night-owl-live',
     venueName: 'St. Pauli Arena',
     inDays: 227,
+    time: '22:30',
     status: 'published',
     imageUrl: 'https://picsum.photos/id/84/1280/848',
     ageRestriction: '15+',
+    reservedSeating: true,
     ticketTypes: [
       {
         name: 'Early Bird',
         description: 'Cheapest way in, limited release',
         priceCents: 1900,
-        quantity: 200,
+        quantity: 12,
+        quantitySold: 11,
         maxPerCustomer: 5,
+        sections: ['Stalls'],
       },
       {
         name: 'Standard',
         description: 'Full evening of comedy',
         priceCents: 2900,
-        quantity: 100,
+        quantity: 14,
         maxPerCustomer: 3,
+        sections: ['Stalls'],
       },
       {
         name: 'Late Show',
         description: 'Late-night slot with surprise headliner',
         priceCents: 2400,
-        quantity: 100,
+        quantity: 8,
         maxPerCustomer: 3,
+        sections: ['Balcony'],
       },
     ],
   },
@@ -432,31 +507,36 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'city-sounds',
     venueName: 'Kulturbrauerei',
     inDays: 349,
+    time: '19:00',
     status: 'published',
     featured: true,
     imageUrl: 'https://picsum.photos/id/43/1280/831',
+    reservedSeating: true,
     ticketTypes: [
       {
         name: 'Day Pass',
         description: 'Single-day entry, almost sold out',
         priceCents: 4200,
-        quantity: 500,
-        quantitySold: 480,
+        quantity: 40,
+        quantitySold: 38,
         maxPerCustomer: 6,
+        sections: ['Main Floor'],
       },
       {
         name: 'Weekend Ticket',
         description: 'Both days including the sunrise stage',
         priceCents: 7900,
-        quantity: 500,
+        quantity: 40,
         maxPerCustomer: 6,
+        sections: ['Main Floor'],
       },
       {
         name: 'VIP Deck',
-        description: 'Raised deck, lounge bar and artist bar',
+        description: 'Raised gallery with lounge bar and artist bar',
         priceCents: 13900,
-        quantity: 250,
+        quantity: 20,
         maxPerCustomer: 6,
+        sections: ['Gallery'],
       },
     ],
   },
@@ -467,6 +547,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'city-sounds',
     venueName: 'Olympiahalle',
     inDays: 441,
+    time: '15:00',
     status: 'published',
     imageUrl: 'https://picsum.photos/id/37/2000/1333',
     ticketTypes: [
@@ -500,6 +581,7 @@ const SEED_EVENTS: SeedEvent[] = [
     organizerSlug: 'night-owl-live',
     venueName: 'Grand Arena',
     inDays: 823,
+    time: '21:00',
     status: 'published',
     featured: true,
     imageUrl: 'https://picsum.photos/id/56/2880/',
@@ -540,6 +622,7 @@ export {
   SEED_CATEGORIES,
   SEED_ORGANIZERS,
   SEED_VENUES,
+  SEED_VENUE_LAYOUTS,
   SEED_EVENTS,
   SEED_FAVORITES,
 };
