@@ -8,5 +8,20 @@ export default defineConfig({
     root: './',
     include: ['**/*.e2e-spec.ts'],
     fileParallelism: false,
+    coverage: {
+      provider: 'v8',
+      all: true,
+      reportsDirectory: './coverage-e2e',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/main.ts',
+        'src/migrations/**',
+        'src/config/data-source.ts',
+        'src/seed.ts',
+        'src/seed-data.ts',
+        '**/*.spec.ts',
+      ],
+    },
   },
 });

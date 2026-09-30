@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 coverage/
+coverage-e2e/
 *.tsbuildinfo
 
 # Runtime uploads (event images)
