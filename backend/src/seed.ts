@@ -37,15 +37,18 @@ const E2E_USER_PREDICATE = `(
   OR email LIKE 'audit%@t.local'
 )`;
 
-const THROWAWAY_NAME_PREDICATE = `(
-  name LIKE 'E2E %'
-  OR name LIKE 'Dbg %'
-  OR name LIKE 'D %'
-  OR name LIKE 'P Org probe-%'
-  OR name LIKE 'P Ev probe-%'
-  OR name LIKE '%(copy)%'
-  OR name = 'Harmony Events'
+const throwawayNamePredicate = (alias: string): string => `(
+  ${alias}name LIKE 'E2E %'
+  OR ${alias}name LIKE 'Dbg %'
+  OR ${alias}name LIKE 'D %'
+  OR ${alias}name LIKE 'P Org probe-%'
+  OR ${alias}name LIKE 'P Ev probe-%'
+  OR ${alias}name LIKE '%(copy)%'
+  OR ${alias}name = 'Harmony Events'
 )`;
+
+const THROWAWAY_NAME_PREDICATE = throwawayNamePredicate('');
+const THROWAWAY_EVENT_PREDICATE = `(${throwawayNamePredicate('e.')} OR e."deletedAt" IS NOT NULL)`;
 
 const purge = process.argv.includes('--purge');
 
@@ -58,8 +61,19 @@ async function cleanupTestFixtures(): Promise<void> {
       await em.query(`DELETE FROM favorites`);
       await em.query(`DELETE FROM notifications`);
     } else {
+      await em.query(`DELETE FROM orders WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`);
       await em.query(
-        `DELETE FROM orders WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`,
+        `DELETE FROM orders WHERE EXISTS (
+           SELECT 1 FROM order_items oi
+           JOIN events e ON e.id = oi.event_id
+           WHERE oi.order_id = orders.id AND ${THROWAWAY_EVENT_PREDICATE}
+         )`,
+      );
+      await em.query(
+        `DELETE FROM cart_items WHERE ticket_type_id IN (
+           SELECT tt.id FROM ticket_types tt JOIN events e ON e.id = tt.event_id
+           WHERE ${THROWAWAY_EVENT_PREDICATE}
+         )`,
       );
     }
     await em.query(`DELETE FROM email_outbox`);
