@@ -152,7 +152,8 @@ export interface TicketEventInfo {
   dateTime: string;
   city: string;
   address: string;
-  venue: Venue;
+  deleted: boolean;
+  venue: Venue | null;
 }
 
 export interface TicketView {
@@ -163,8 +164,8 @@ export interface TicketView {
   qrPayload: string;
   pricePaidCents: number;
   purchasedAt: string;
-  event: TicketEventInfo;
-  ticketType: { id: string; name: string };
+  event: TicketEventInfo | null;
+  ticketType: { id: string; name: string } | null;
 }
 
 export interface OrderTicketView {
@@ -261,6 +262,9 @@ export interface NotificationView {
 export interface NotificationListResponse {
   data: NotificationView[];
   unreadCount: number;
+  page?: number;
+  limit?: number;
+  total?: number;
 }
 
 export interface UnreadCountResponse {
@@ -275,7 +279,7 @@ export interface OrderListParams {
 
 export type FavoriteAddResponse = { id: string };
 export type FavoriteRemoveResponse = void;
-export type PasswordChangeResponse = { success: boolean };
+export type PasswordChangeResponse = { success: boolean; devResetUrl?: string };
 
 export interface AdminRecentOrder {
   id: string;
@@ -336,7 +340,7 @@ export interface AdminEventQueryParams {
 
 export interface EventFormValue {
   name: string;
-  description?: string;
+  description?: string | null;
   categoryId: string;
   organizerId: string;
   venueId: string;
@@ -350,7 +354,7 @@ export interface EventFormValue {
   address?: string;
   featured?: boolean;
   reservedSeating?: boolean;
-  imageUrl?: string;
+  imageUrl?: string | null;
 }
 
 export interface TicketTypeInput {

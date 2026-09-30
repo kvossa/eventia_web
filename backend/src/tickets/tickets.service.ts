@@ -19,8 +19,9 @@ export interface TicketView {
     dateTime: string;
     city: string;
     address: string;
+    deleted: boolean;
     venue: { id: string; name: string; city: string; address: string } | null;
-  };
+  } | null;
   ticketType: { id: string; name: string } | null;
 }
 
@@ -50,25 +51,33 @@ export class TicketsService {
     const total = await qb.clone().getCount();
     const rows = await qb
       .select('t.id', 'id')
+      .addSelect('e.dateTime', 'dateTime')
       .skip((page - 1) * limit)
       .take(limit)
-      .getRawMany<{ id: string }>();
+      .getRawMany<{ id: string; dateTime: string | Date | null }>();
 
     const tickets = rows.length
       ? await repo.find({
           where: { id: In(rows.map((r) => r.id)) },
           relations: TICKET_RELATIONS,
-          order: { purchasedAt: 'DESC' },
+          withDeleted: true,
         })
       : [];
 
-    return { data: tickets.map(toView), page, limit, total };
+    const byId = new Map(tickets.map((t) => [t.id, t]));
+    const ordered = rows
+      .map((r) => byId.get(r.id))
+      .filter((t): t is Ticket => !!t)
+      .map(toView);
+
+    return { data: ordered, page, limit, total };
   }
 
   async detailForUser(userId: string, ticketId: string): Promise<TicketView> {
     const ticket = await this.dataSource.getRepository(Ticket).findOne({
       where: { id: ticketId, userId },
       relations: TICKET_RELATIONS,
+      withDeleted: true,
     });
     if (!ticket) throw new NotFoundError('TICKET_NOT_FOUND', 'Ticket not found');
     return toView(ticket);
@@ -83,20 +92,23 @@ const toView = (ticket: Ticket): TicketView => ({
   qrPayload: ticket.qrPayload,
   pricePaidCents: ticket.pricePaidCents,
   purchasedAt: ticket.purchasedAt.toISOString(),
-  event: {
-    id: ticket.event.id,
-    name: ticket.event.name,
-    dateTime: ticket.event.dateTime.toISOString(),
-    city: ticket.event.city,
-    address: ticket.event.address,
-    venue: ticket.event.venue
-      ? {
-          id: ticket.event.venue.id,
-          name: ticket.event.venue.name,
-          city: ticket.event.venue.city,
-          address: ticket.event.venue.address,
-        }
-      : null,
-  },
+  event: ticket.event
+    ? {
+        id: ticket.event.id,
+        name: ticket.event.name,
+        dateTime: ticket.event.dateTime.toISOString(),
+        city: ticket.event.city,
+        address: ticket.event.address,
+        deleted: ticket.event.deletedAt !== null,
+        venue: ticket.event.venue
+          ? {
+              id: ticket.event.venue.id,
+              name: ticket.event.venue.name,
+              city: ticket.event.venue.city,
+              address: ticket.event.venue.address,
+            }
+          : null,
+      }
+    : null,
   ticketType: ticket.ticketType ? { id: ticket.ticketType.id, name: ticket.ticketType.name } : null,
 });

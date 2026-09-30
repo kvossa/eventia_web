@@ -202,20 +202,20 @@ export class AdminEventFormPage {
   private flatten(v: EventFormValue): EventFormValue {
     const out: EventFormValue = {
       name: v.name.trim(),
+      description: v.description?.trim() || null,
       categoryId: v.categoryId,
       organizerId: v.organizerId,
       venueId: v.venueId,
       dateTime: new Date(v.dateTime).toISOString(),
+      imageUrl: v.imageUrl?.trim() || null,
+      maxCapacity: v.maxCapacity ?? null,
     };
-    if (v.description?.trim()) out.description = v.description.trim();
     if (v.startTime) out.startTime = v.startTime;
     if (v.endTime) out.endTime = v.endTime;
-    if (v.maxCapacity != null) out.maxCapacity = v.maxCapacity;
     if (v.ageRestriction?.trim()) out.ageRestriction = v.ageRestriction.trim();
     if (v.accessibilityInfo?.trim()) out.accessibilityInfo = v.accessibilityInfo.trim();
     if (v.city?.trim()) out.city = v.city.trim();
     if (v.address?.trim()) out.address = v.address.trim();
-    if (v.imageUrl?.trim()) out.imageUrl = v.imageUrl.trim();
     if (v.featured !== undefined) out.featured = v.featured;
     if (v.reservedSeating !== undefined) out.reservedSeating = v.reservedSeating;
     return out;

@@ -407,8 +407,7 @@ describe('Reserved seating (e2e)', () => {
     expect(labels).toHaveLength(2);
   });
 
-  it('a cart accumulates distinct seats idempotently for a fresh buyer', async () => {
-    const fresh = await send(app, 'post', '/api/v1/auth/register', undefined, {
+  it('a cart accumulates distinct seats idempotently for a fresh buyer', async () => {    const fresh = await send(app, 'post', '/api/v1/auth/register', undefined, {
       email: `e2e-multi-${suffix}@example.com`,
       password: 'e2epass123',
       name: 'Multi Seat',
@@ -461,5 +460,83 @@ describe('Reserved seating (e2e)', () => {
       .filter((seat: { id: string }) => seat.id === seatOne || seat.id === seatTwo);
     expect(mine).toHaveLength(2);
     expect(mine.every((seat: { held: boolean }) => seat.held === false)).toBe(true);
+  });
+
+  it('refuses to rebuild or delete a row whose seats were sold, and keeps the seats intact', async () => {
+    const layout = (await send(app, 'get', `/api/v1/venues/${venueId}/layout`).expect(200)).body;
+    const floor = layout.sections.find((s: { id: string }) => s.id === floorId);
+    const rowA = floor.rows.find((r: { label: string }) => r.label === 'A');
+    expect(rowA.seats).toHaveLength(3);
+
+    await send(app, 'patch', `/api/v1/admin/venues/rows/${rowA.id}`, adminToken, {
+      label: 'A',
+      seatCount: 9,
+      accessibleNumbers: [],
+    })
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('SEATS_ALREADY_SOLD');
+        expect(res.body.errors[0]).toMatch(/sold or reserved/i);
+      });
+
+    await send(app, 'delete', `/api/v1/admin/venues/rows/${rowA.id}`, adminToken)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('SEATS_ALREADY_SOLD');
+      });
+
+    const after = (await send(app, 'get', `/api/v1/venues/${venueId}/layout`).expect(200)).body;
+    const rowAfter = after.sections
+      .find((s: { id: string }) => s.id === floorId)
+      .rows.find((r: { id: string }) => r.id === rowA.id);
+    expect(rowAfter).toBeDefined();
+    expect(rowAfter.seats.map((s: { id: string }) => s.id)).toEqual(floorSeats);
+    expect(rowAfter.seats).toHaveLength(3);
+  });
+
+  it('refuses to delete a section holding a sold row but still allows untouched rows', async () => {
+    const layout = (await send(app, 'get', `/api/v1/venues/${venueId}/layout`).expect(200)).body;
+    const floor = layout.sections.find((s: { id: string }) => s.id === floorId);
+    const heldRow = floor.rows.find((r: { label: string }) => r.label === 'Z');
+    expect(heldRow).toBeDefined();
+
+    await send(app, 'delete', `/api/v1/admin/venues/sections/${floorId}`, adminToken)
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('SEATS_ALREADY_SOLD');
+      });
+
+    const after = (await send(app, 'get', `/api/v1/venues/${venueId}/layout`).expect(200)).body;
+    expect(after.sections.some((s: { id: string }) => s.id === floorId)).toBe(true);
+
+    await send(app, 'patch', `/api/v1/admin/venues/rows/${heldRow.id}`, adminToken, {
+      label: 'Z',
+      seatCount: 4,
+      accessibleNumbers: [4],
+    })
+      .expect(409)
+      .expect((res) => {
+        expect(res.body.code).toBe('SEATS_ALREADY_SOLD');
+      });
+
+    const freshRow = await send(app, 'post', `/api/v1/admin/venues/sections/${floorId}/rows`, adminToken, {
+      label: 'Y',
+      seatCount: 3,
+    }).expect(201);
+
+    await send(app, 'patch', `/api/v1/admin/venues/rows/${freshRow.body.id}`, adminToken, {
+      label: 'Y',
+      seatCount: 4,
+      accessibleNumbers: [4],
+    }).expect(200);
+
+    const rebuilt = (await send(app, 'get', `/api/v1/venues/${venueId}/layout`).expect(200)).body;
+    const rebuiltRow = rebuilt.sections
+      .find((s: { id: string }) => s.id === floorId)
+      .rows.find((r: { id: string }) => r.id === freshRow.body.id);
+    expect(rebuiltRow.seats).toHaveLength(4);
+    expect(rebuiltRow.seats[3].isAccessible).toBe(true);
+
+    await send(app, 'delete', `/api/v1/admin/venues/rows/${freshRow.body.id}`, adminToken).expect(200);
   });
 });

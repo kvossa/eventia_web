@@ -104,7 +104,7 @@ export class AuthService {
     await this.revokeAllForUser(userId);
   }
 
-  async requestPasswordReset(email: string): Promise<{ success: true }> {
+  async requestPasswordReset(email: string): Promise<{ success: true; devResetUrl?: string }> {
     const user = await this.usersService.findByEmail(email);
     if (!user) return { success: true };
 
@@ -114,6 +114,7 @@ export class AuthService {
     await this.usersService.save(user);
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200';
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${token}`;
     await this.mailService.enqueue({
       to: user.email,
       subject: 'Reset your Eventia password',
@@ -121,12 +122,15 @@ export class AuthService {
         'Hello,',
         '',
         'You requested a password reset for your Eventia account.',
-        `${frontendUrl}/auth/reset-password?token=${token}`,
+        resetUrl,
         '',
         'This link expires in 60 minutes. If you did not request this, you can ignore this email.',
       ].join('\n'),
     });
 
+    if (this.config.get<string>('NODE_ENV') !== 'production') {
+      return { success: true, devResetUrl: resetUrl };
+    }
     return { success: true };
   }
 

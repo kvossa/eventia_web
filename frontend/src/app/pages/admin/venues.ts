@@ -168,10 +168,14 @@ export class AdminVenuesPage {
       return;
     }
     this.saving.set(true);
-    const body: VenueInput = { name, city, address };
-    if (this.form.capacity != null) body.capacity = this.form.capacity;
-    if (this.form.imageUrl?.trim()) body.imageUrl = this.form.imageUrl.trim();
-    if (this.form.description?.trim()) body.description = this.form.description.trim();
+    const body: VenueInput = {
+      name,
+      city,
+      address,
+      capacity: this.form.capacity ?? null,
+      imageUrl: this.form.imageUrl?.trim() || null,
+      description: this.form.description?.trim() || null,
+    };
     try {
       if (this.editingId()) {
         await this.api.venueUpdate(this.editingId()!, body);

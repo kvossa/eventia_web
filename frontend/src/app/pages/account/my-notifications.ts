@@ -55,6 +55,19 @@ import { NotificationView } from '../../core/models';
               </span>
             </button>
           }
+
+          @if (hasMore()) {
+            <div class="more">
+              <button
+                class="btn btn-ghost"
+                type="button"
+                (click)="loadMore()"
+                [disabled]="loadingMore()"
+                data-testid="load-more-notifications"
+              >{{ loadingMore() ? 'Loading…' : 'Load more' }}</button>
+              <p class="sub">Showing {{ items().length }} of {{ total() }}</p>
+            </div>
+          }
         </div>
       }
     </div>
@@ -76,12 +89,17 @@ import { NotificationView } from '../../core/models';
     .row.unread .title { color: var(--color-accent); }
     .message { color: var(--color-text-dim); font-size: 0.9rem; }
     .time { color: var(--color-text-dim); font-size: 0.76rem; }
+    .more { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 14px; }
   `,
 })
 export class MyNotificationsPage {
   readonly loading = signal(true);
   readonly markingAll = signal(false);
   readonly items = signal<NotificationView[]>([]);
+  readonly loadingMore = signal(false);
+  readonly page = signal(1);
+  readonly total = signal(0);
+  readonly hasMore = computed(() => this.items().length < this.total());
   readonly unreadLocal = computed(() => this.items().filter((n) => !n.read).length);
 
   private readonly api = inject(ApiService);
@@ -92,11 +110,29 @@ export class MyNotificationsPage {
     try {
       const res = await this.api.notifications();
       this.items.set(res.data ?? []);
+      this.page.set(res.page ?? 1);
+      this.total.set(res.total ?? (res.data ?? []).length);
       this.notifications.applyUnread(res.unreadCount);
     } catch (err) {
       this.toast.show('error', (err as Error).message);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async loadMore(): Promise<void> {
+    if (this.loadingMore() || !this.hasMore()) return;
+    const next = this.page() + 1;
+    this.loadingMore.set(true);
+    try {
+      const res = await this.api.notifications({ page: next });
+      this.items.update((list) => [...list, ...(res.data ?? [])]);
+      this.page.set(res.page ?? next);
+      this.total.set(res.total ?? this.items().length);
+    } catch (err) {
+      this.toast.show('error', (err as Error).message);
+    } finally {
+      this.loadingMore.set(false);
     }
   }
 

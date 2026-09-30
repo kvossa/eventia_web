@@ -53,7 +53,7 @@ export class Ticket extends BaseEntity {
   @Column({ name: 'seat_label', type: 'varchar', length: 100, nullable: true })
   seatLabel: string | null;
 
-  @ManyToOne(() => Seat, { onDelete: 'SET NULL' })
+  @ManyToOne(() => Seat, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'seat_id' })
   seat: Seat | null;
 

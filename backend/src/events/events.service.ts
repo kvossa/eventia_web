@@ -337,7 +337,7 @@ export class EventsService {
     if (dto.venueId) await this.assertReferencesExist(undefined, undefined, dto.venueId);
 
     if (dto.name !== undefined) event.name = dto.name;
-    if (dto.description !== undefined) event.description = dto.description;
+    if (dto.description !== undefined) event.description = dto.description?.trim() || null;
     if (dto.categoryId !== undefined) event.categoryId = dto.categoryId;
     if (dto.organizerId !== undefined) event.organizerId = dto.organizerId;
     if (dto.venueId !== undefined) event.venueId = dto.venueId;
@@ -352,7 +352,7 @@ export class EventsService {
     if (dto.featured !== undefined) event.featured = dto.featured;
     if (dto.reservedSeating !== undefined) event.reservedSeating = dto.reservedSeating;
     if (event.reservedSeating) await this.assertVenueHasLayout(event.venueId);
-    if (dto.imageUrl !== undefined) event.imageUrl = dto.imageUrl;
+    if (dto.imageUrl !== undefined) event.imageUrl = dto.imageUrl?.trim() || null;
 
     return this.eventsRepo.save(event);
   }

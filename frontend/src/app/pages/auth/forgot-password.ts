@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
+import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-forgot-password',
@@ -14,6 +15,12 @@ import { ApiService } from '../../core/api.service';
           <p class="note" data-testid="forgot-password-sent">
             If an account exists for that email, we've sent a password reset link.
           </p>
+          @if (devResetUrl(); as url) {
+            <div class="dev-reset" data-testid="forgot-password-dev-link">
+              <p class="note">Development build — no email is actually sent.</p>
+              <a class="btn btn-primary btn-block" href="{{ url }}">Open the password reset link</a>
+            </div>
+          }
           <a class="btn btn-primary btn-block" routerLink="/auth/login">Back to login</a>
         } @else {
           <h1 class="page-title">Forgot your password?</h1>
@@ -55,15 +62,21 @@ export class ForgotPasswordPage {
 
   readonly sent = signal(false);
   readonly busy = signal(false);
+  readonly devResetUrl = signal<string | null>(null);
 
   private readonly api = inject(ApiService);
+  private readonly toast = inject(ToastService);
 
   async submit(): Promise<void> {
     if (this.form.invalid) return;
     this.busy.set(true);
     try {
-      await this.api.forgotPassword({ email: this.form.value.email ?? '' });
+      const res = await this.api.forgotPassword({ email: this.form.value.email ?? '' });
+      this.devResetUrl.set(res.devResetUrl ?? null);
       this.sent.set(true);
+    } catch (err) {
+      const api = err as { message?: string };
+      this.toast.show('error', api.message ?? 'Could not request a password reset. Please try again.');
     } finally {
       this.busy.set(false);
     }

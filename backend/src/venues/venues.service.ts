@@ -2,10 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ConflictError, NotFoundError, ValidationError } from '../common/app-error.js';
+import { CartItemSeat } from '../entities/cart-item-seat.entity.js';
 import { Event } from '../entities/event.entity.js';
 import { Seat } from '../entities/seat.entity.js';
 import { Section } from '../entities/section.entity.js';
 import { SeatRow } from '../entities/seat-row.entity.js';
+import { Ticket } from '../entities/ticket.entity.js';
 import { Venue } from '../entities/venue.entity.js';
 
 export interface LayoutSeatView {
@@ -44,6 +46,10 @@ export class VenuesService {
     private readonly rowsRepo: Repository<SeatRow>,
     @InjectRepository(Seat)
     private readonly seatsRepo: Repository<Seat>,
+    @InjectRepository(Ticket)
+    private readonly ticketsRepo: Repository<Ticket>,
+    @InjectRepository(CartItemSeat)
+    private readonly cartItemSeatsRepo: Repository<CartItemSeat>,
   ) {}
 
   findAll(): Promise<Venue[]> {
@@ -63,7 +69,10 @@ export class VenuesService {
 
   async update(id: string, data: Partial<{ name: string; city: string; address: string; description: string | null; capacity: number | null; imageUrl: string | null }>): Promise<Venue> {
     const venue = await this.findOne(id);
-    Object.assign(venue, data);
+    const patch = { ...data };
+    if (patch.description !== undefined) patch.description = patch.description?.trim() || null;
+    if (patch.imageUrl !== undefined) patch.imageUrl = patch.imageUrl?.trim() || null;
+    Object.assign(venue, patch);
     return this.repo.save(venue);
   }
 
@@ -130,6 +139,11 @@ export class VenuesService {
   async deleteSection(id: string): Promise<void> {
     const section = await this.sectionsRepo.findOne({ where: { id } });
     if (!section) throw new NotFoundError('SECTION_NOT_FOUND', 'Section not found');
+    const rows = await this.rowsRepo.find({ where: { sectionId: id } });
+    await this.assertSeatsUnclaimed(
+      rows.map((r) => r.id),
+      'This section contains seats that are already sold or reserved and cannot be deleted',
+    );
     await this.sectionsRepo.remove(section);
   }
 
@@ -150,6 +164,7 @@ export class VenuesService {
   ): Promise<SeatRow> {
     const row = await this.rowsRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundError('ROW_NOT_FOUND', 'Row not found');
+    await this.assertSeatsUnclaimed([id], 'This row contains seats that are already sold or reserved and cannot be changed');
     if (data.label !== row.label) {
       await this.assertRowLabelFree(row.sectionId, data.label);
     }
@@ -165,7 +180,23 @@ export class VenuesService {
   async deleteRow(id: string): Promise<void> {
     const row = await this.rowsRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundError('ROW_NOT_FOUND', 'Row not found');
+    await this.assertSeatsUnclaimed([id], 'This row contains seats that are already sold or reserved and cannot be deleted');
     await this.rowsRepo.remove(row);
+  }
+
+  private async assertSeatsUnclaimed(rowIds: string[], message: string): Promise<void> {
+    if (rowIds.length === 0) return;
+    const seats = await this.seatsRepo.find({ where: { rowId: In(rowIds) } });
+    if (seats.length === 0) return;
+    const seatIds = seats.map((s) => s.id);
+    const sold = await this.ticketsRepo.exists({ where: { seatId: In(seatIds) } });
+    if (sold) {
+      throw new ConflictError('SEATS_ALREADY_SOLD', message);
+    }
+    const held = await this.cartItemSeatsRepo.exists({ where: { seatId: In(seatIds) } });
+    if (held) {
+      throw new ConflictError('SEATS_ALREADY_SOLD', message);
+    }
   }
 
   private async assertRowLabelFree(sectionId: string, label: string): Promise<void> {

@@ -12,6 +12,7 @@ import { OrderQueryDto } from './dto/order-query.dto.js';
 import { OrderDetailView, OrderWithRelations, serializeOrder } from './order.serializer.js';
 
 const CSV_BOM = '\uFEFF';
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 const ORDER_RELATIONS = {
   items: { event: { venue: true }, ticketType: true, tickets: true },
@@ -109,7 +110,10 @@ export class OrdersService {
     }
     if (query.to) {
       const to = new Date(query.to);
-      if (!Number.isNaN(to.getTime())) qb.andWhere('o.createdAt <= :to', { to });
+      if (!Number.isNaN(to.getTime())) {
+        if (DATE_ONLY.test(query.to)) to.setUTCHours(23, 59, 59, 999);
+        qb.andWhere('o.createdAt <= :to', { to });
+      }
     }
     if (query.q) {
       qb.andWhere(

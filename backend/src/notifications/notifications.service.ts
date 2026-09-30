@@ -22,25 +22,31 @@ export class NotificationsService {
   async listForUser(
     userId: string,
     query: NotificationQueryDto,
-  ): Promise<{ data: NotificationView[]; unreadCount: number }> {
+  ): Promise<{ data: NotificationView[]; unreadCount: number; page: number; limit: number; total: number }> {
     const limit = query.limit ?? 20;
+    const page = query.page ?? 1;
     const where: FindOptionsWhere<Notification> = { userId };
     if (query.unreadOnly) where.readAt = IsNull();
 
-    const [notifications, unreadCount] = await Promise.all([
+    const [notifications, unreadCount, total] = await Promise.all([
       this.dataSource.getRepository(Notification).find({
         where,
         order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
         take: limit,
       }),
       this.dataSource.getRepository(Notification).count({
         where: { userId, readAt: IsNull() },
       }),
+      this.dataSource.getRepository(Notification).count({ where }),
     ]);
 
     return {
       data: notifications.map(toView),
       unreadCount,
+      page,
+      limit,
+      total,
     };
   }
 

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import QRCode from 'qrcode';
 import { EmptyState } from '../../components/empty-state';
@@ -41,27 +41,53 @@ type Scope = 'upcoming' | 'past' | 'all';
         <div class="tickets">
           @for (ticket of tickets(); track ticket.id) {
             <article class="ticket card" data-testid="ticket">
-              <div class="info">
-                <h2>{{ ticket.event.name }}</h2>
-                <p class="date">{{ formatDateTime(ticket.event.dateTime) }}</p>
-                <p class="venue">
-                  {{ ticket.event.venue.name }} — {{ ticket.event.address }}, {{ ticket.event.city }}
-                </p>
-                <div class="rows">
-                  <div class="row"><span>Ticket type</span><strong>{{ ticket.ticketType.name }}</strong></div>
-                  @if (ticket.seatLabel) {
-                    <div class="row"><span>Seat</span><strong>{{ ticket.seatLabel }}</strong></div>
+              @if (ticket.event; as ev) {
+                <div class="info">
+                  @if (ev.deleted) {
+                    <div class="notice" data-testid="ticket-event-unavailable">
+                      This event is no longer available — your ticket is still valid.
+                    </div>
                   }
-                  <div class="row"><span>Ticket ID</span><strong class="mono">{{ ticket.uniqueId }}</strong></div>
-                  <div class="row"><span>Price</span><strong>{{ formatCents(ticket.pricePaidCents) }}</strong></div>
-                </div>
-                <div class="status-line">
-                  <span class="badge" [class]="ticket.status">{{ ticket.status }}</span>
-                  @if (ticket.status === 'valid') {
-                    <span class="scan-note">Show this QR code at the entrance</span>
+                  <h2>{{ ev.name }}</h2>
+                  <p class="date">{{ formatDateTime(ev.dateTime) }}</p>
+                  @if (ev.venue; as venue) {
+                    <p class="venue">
+                      {{ venue.name }} — {{ ev.address }}, {{ ev.city }}
+                    </p>
+                  } @else {
+                    <p class="venue">{{ ev.address }}, {{ ev.city }}</p>
                   }
+                  <div class="rows">
+                    @if (ticket.ticketType; as tt) {
+                      <div class="row"><span>Ticket type</span><strong>{{ tt.name }}</strong></div>
+                    }
+                    @if (ticket.seatLabel) {
+                      <div class="row"><span>Seat</span><strong>{{ ticket.seatLabel }}</strong></div>
+                    }
+                    <div class="row"><span>Ticket ID</span><strong class="mono">{{ ticket.uniqueId }}</strong></div>
+                    <div class="row"><span>Price</span><strong>{{ formatCents(ticket.pricePaidCents) }}</strong></div>
+                  </div>
+                  <div class="status-line">
+                    <span class="badge" [class]="ticket.status">{{ ticket.status }}</span>
+                    @if (ticket.status === 'valid') {
+                      <span class="scan-note">Show this QR code at the entrance</span>
+                    }
+                  </div>
                 </div>
-              </div>
+              } @else {
+                <div class="info">
+                  <div class="notice" data-testid="ticket-event-unavailable">
+                    This event is no longer available — your ticket is still valid.
+                  </div>
+                  <div class="rows">
+                    <div class="row"><span>Ticket ID</span><strong class="mono">{{ ticket.uniqueId }}</strong></div>
+                    <div class="row"><span>Price</span><strong>{{ formatCents(ticket.pricePaidCents) }}</strong></div>
+                  </div>
+                  <div class="status-line">
+                    <span class="badge" [class]="ticket.status">{{ ticket.status }}</span>
+                  </div>
+                </div>
+              }
               <div class="qr">
                 @if (qrData().get(ticket.id); as dataUrl) {
                   <img [src]="dataUrl" alt="Ticket QR code" width="160" height="160" />
@@ -72,6 +98,19 @@ type Scope = 'upcoming' | 'past' | 'all';
             </article>
           }
         </div>
+
+        @if (hasMore()) {
+          <div class="more">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="loadMore()"
+              [disabled]="loadingMore()"
+              data-testid="load-more"
+            >{{ loadingMore() ? 'Loading…' : 'Load more' }}</button>
+            <p class="count">Showing {{ tickets().length }} of {{ total() }}</p>
+          </div>
+        }
       }
     </div>
   `,
@@ -96,8 +135,15 @@ type Scope = 'upcoming' | 'past' | 'all';
     .mono { font-family: ui-monospace, monospace; font-size: 0.8rem; }
     .status-line { display: flex; align-items: center; gap: 10px; }
     .scan-note { font-size: 0.8rem; color: var(--color-text-dim); }
+    .notice {
+      margin: 0 0 10px; padding: 8px 12px; border-radius: var(--radius-sm);
+      background: rgba(248, 113, 113, 0.14); color: var(--color-danger);
+      font-size: 0.85rem; font-weight: 600;
+    }
     .qr { flex-shrink: 0; }
     .qr img { display: block; border-radius: var(--radius-sm); background: #fff; padding: 8px; }
+    .more { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 24px; }
+    .count { color: var(--color-text-dim); font-size: 0.85rem; margin: 0; }
   `,
 })
 export class MyTicketsPage implements OnInit {
@@ -110,6 +156,10 @@ export class MyTicketsPage implements OnInit {
   readonly scope = signal<Scope>('upcoming');
   readonly tickets = signal<TicketView[]>([]);
   readonly loading = signal(true);
+  readonly loadingMore = signal(false);
+  readonly page = signal(1);
+  readonly total = signal(0);
+  readonly hasMore = computed(() => this.tickets().length < this.total());
   readonly qrData = signal<Map<string, string>>(new Map());
 
   protected readonly formatCents = formatCents;
@@ -128,12 +178,36 @@ export class MyTicketsPage implements OnInit {
     await this.loadTickets();
   }
 
+  async loadMore(): Promise<void> {
+    if (this.loadingMore() || !this.hasMore()) return;
+    const next = this.page() + 1;
+    this.loadingMore.set(true);
+    try {
+      const res = await this.api.get<Paginated<TicketView>>('/tickets', {
+        scope: this.scope(),
+        page: next,
+      });
+      this.page.set(next);
+      this.tickets.update((list) => [...list, ...res.data]);
+      for (const ticket of res.data) {
+        void this.genQr(ticket);
+      }
+    } catch (err) {
+      const api = err as { message?: string };
+      this.toast.show('error', api.message ?? 'Could not load more tickets.');
+    } finally {
+      this.loadingMore.set(false);
+    }
+  }
+
   private async loadTickets(): Promise<void> {
     this.loading.set(true);
     this.qrData.set(new Map());
     try {
       const res = await this.api.get<Paginated<TicketView>>('/tickets', { scope: this.scope() });
       this.tickets.set(res.data);
+      this.page.set(res.page);
+      this.total.set(res.total);
       for (const ticket of res.data) {
         void this.genQr(ticket);
       }
@@ -141,6 +215,7 @@ export class MyTicketsPage implements OnInit {
       const api = err as { message?: string };
       this.toast.show('error', api.message ?? 'Could not load your tickets.');
       this.tickets.set([]);
+      this.total.set(0);
     } finally {
       this.loading.set(false);
     }

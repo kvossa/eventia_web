@@ -28,6 +28,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const BCRYPT_COST = 12;
 const created: Record<string, number> = {};
 
+const E2E_USER_PREDICATE = `(
+  email ~ '-[a-z0-9]{8}@example[.]com$'
+  OR email LIKE 'audit%@t.local'
+  OR email LIKE 'e2e-%@example.com'
+)`;
+
 async function cleanupTestFixtures(): Promise<void> {
   await AppDataSource.transaction(async (em) => {
     await em.query(`DELETE FROM orders`);
@@ -39,9 +45,17 @@ async function cleanupTestFixtures(): Promise<void> {
     await em.query(`DELETE FROM venues WHERE name LIKE 'E2E %'`);
     await em.query(`DELETE FROM organizers WHERE slug = 'harmony-events-2' OR name LIKE 'E2E %'`);
     await em.query(`DELETE FROM categories WHERE name LIKE 'E2E %'`);
+    await em.query(
+      `DELETE FROM notifications WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`,
+    );
+    await em.query(
+      `DELETE FROM favorites WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`,
+    );
+    await em.query(`DELETE FROM carts WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`);
+    await em.query(`DELETE FROM users WHERE ${E2E_USER_PREDICATE}`);
   });
   console.log(
-    '[seed] removed test fixtures (E2E *, *(copy)*, harmony-events-2, Summer Symphony Nights) and cleared email_outbox',
+    '[seed] removed test fixtures (E2E *, *(copy)*, harmony-events-2, Summer Symphony Nights, throwaway e2e users) and cleared email_outbox',
   );
 }
 

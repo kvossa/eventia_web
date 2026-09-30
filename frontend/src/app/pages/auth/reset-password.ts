@@ -11,10 +11,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
 
-function matchValidator(control: AbstractControl): ValidationErrors | null {
-  const group = control.parent;
-  if (!group) return null;
-  return group.get('newPassword')?.value === control.value ? null : { match: true };
+function matchValidator(group: AbstractControl): ValidationErrors | null {
+  const g = group as FormGroup;
+  const newPassword = g.get('newPassword')?.value as string;
+  const confirmPassword = g.get('confirmPassword')?.value as string;
+  return newPassword && confirmPassword && newPassword !== confirmPassword ? { match: true } : null;
 }
 
 @Component({
@@ -54,6 +55,11 @@ function matchValidator(control: AbstractControl): ValidationErrors | null {
                 formControlName="confirmPassword"
                 autocomplete="new-password"
               />
+              @if (confirmControl.touched && (confirmControl.errors?.['required'] || form.errors?.['match'])) {
+                <p class="error" data-testid="reset-password-match-error">
+                  {{ confirmControl.errors?.['required'] ? 'Please confirm your password.' : 'Passwords do not match.' }}
+                </p>
+              }
             </div>
             <button class="btn btn-primary btn-block" type="submit" [disabled]="form.invalid || busy()">
               {{ busy() ? 'Resetting…' : 'Reset password' }}
@@ -81,13 +87,21 @@ function matchValidator(control: AbstractControl): ValidationErrors | null {
       font-size: 0.8rem; font-weight: 600;
     }
     .note { color: var(--color-text-dim); font-size: 0.9rem; margin-bottom: 18px; }
+    .error { margin: 6px 0 0; color: var(--color-danger); font-size: 0.8rem; }
   `,
 })
 export class ResetPasswordPage {
-  readonly form = new FormGroup({
-    newPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),
-    confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, matchValidator] }),
-  });
+  readonly form = new FormGroup(
+    {
+      newPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),
+      confirmPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    },
+    { validators: [matchValidator] },
+  );
+
+  get confirmControl(): FormControl<string> {
+    return this.form.controls.confirmPassword;
+  }
 
   readonly showPassword = signal(false);
   readonly done = signal(false);

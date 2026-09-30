@@ -251,7 +251,7 @@ export class AdminEventsPage {
   }
 
   async remove(id: string): Promise<void> {
-    if (!window.confirm('Delete this event? This can be undone by an administrator.')) return;
+    if (!window.confirm('Delete this event? It will be hidden from the site. Your existing orders and tickets are kept.')) return;
     try {
       await this.api.eventRemove(id);
       this.toast.show('success', 'Event deleted.');

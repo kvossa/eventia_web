@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Paginated, UserRole } from '@eventia/shared';
-import { Repository } from 'typeorm';
+import type { Paginated, TicketStatus, UserRole } from '@eventia/shared';
+import { In, Not, Repository } from 'typeorm';
 import { ForbiddenError, NotFoundError } from '../common/app-error.js';
 import { Event } from '../entities/event.entity.js';
 import { Order } from '../entities/order.entity.js';
@@ -35,6 +35,8 @@ export interface AdminUserListParams {
   limit?: number;
 }
 
+const NON_SALE_TICKET_STATUSES: TicketStatus[] = ['cancelled', 'refunded'];
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -62,7 +64,7 @@ export class AdminService {
 
     const [paid, ticketsSold, upcomingEvents, recentOrders] = await Promise.all([
       this.paymentsRepo.sum('amountCents', { status: 'succeeded' }),
-      this.ticketsRepo.count(),
+      this.ticketsRepo.count({ where: { status: Not(In(NON_SALE_TICKET_STATUSES)) } }),
       this.eventsRepo
         .createQueryBuilder('e')
         .where('e.status = :status', { status: 'published' })

@@ -212,6 +212,94 @@ describe('Account & admin foundations (e2e)', () => {
     expect(listBefore.body.some((v) => v.id === ven.body.id)).toBe(true);
   });
 
+  it('clearing optional event and venue fields really empties them', async () => {
+    const cat = await send(app, 'post', '/api/v1/categories', adminToken, {
+      name: `E2E Cat Clr ${suffix}`,
+      slug: `e2e-cat-clr-${suffix}`,
+    }).expect(201);
+    const org = await send(app, 'post', '/api/v1/organizers', adminToken, {
+      name: `E2E Org Clr ${suffix}`,
+      slug: `e2e-org-clr-${suffix}`,
+    }).expect(201);
+    const ven = await send(app, 'post', '/api/v1/venues', adminToken, {
+      name: `E2E Ven Clr ${suffix}`,
+      city: 'Berlin',
+      address: 'Clearstr. 4',
+      description: 'A description',
+      imageUrl: 'https://example.com/venue.png',
+      capacity: 500,
+    }).expect(201);
+    expect(ven.body.description).toBe('A description');
+    expect(ven.body.capacity).toBe(500);
+
+    const clearedVenue = await send(app, 'patch', `/api/v1/venues/${ven.body.id}`, adminToken, {
+      description: null,
+      imageUrl: null,
+      capacity: null,
+    }).expect(200);
+    expect(clearedVenue.body.description).toBeNull();
+    expect(clearedVenue.body.imageUrl).toBeNull();
+    expect(clearedVenue.body.capacity).toBeNull();
+
+    const blankVenue = await send(app, 'patch', `/api/v1/venues/${ven.body.id}`, adminToken, {
+      description: '',
+      imageUrl: 'https://example.com/venue2.png',
+    }).expect(200);
+    expect(blankVenue.body.description).toBeNull();
+    expect(blankVenue.body.imageUrl).toBe('https://example.com/venue2.png');
+
+    const event = await send(app, 'post', '/api/v1/events', adminToken, {
+      name: `E2E Clear ${suffix}`,
+      categoryId: cat.body.id,
+      organizerId: org.body.id,
+      venueId: ven.body.id,
+      dateTime: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+      description: 'Full description',
+      imageUrl: 'https://example.com/event.png',
+      maxCapacity: 1200,
+      accessibilityInfo: 'Step free access',
+    }).expect(201);
+    expect(event.body.description).toBe('Full description');
+    expect(event.body.maxCapacity).toBe(1200);
+
+    const cleared = await send(app, 'patch', `/api/v1/events/${event.body.id}`, adminToken, {
+      description: null,
+      imageUrl: null,
+      maxCapacity: null,
+    }).expect(200);
+    expect(cleared.body.description).toBeNull();
+    expect(cleared.body.imageUrl).toBeNull();
+    expect(cleared.body.maxCapacity).toBeNull();
+    expect(cleared.body.accessibilityInfo).toBe('Step free access');
+
+    const detail = await send(app, 'get', `/api/v1/admin/events/${event.body.id}`, adminToken).expect(200);
+    expect(detail.body.description).toBeNull();
+    expect(detail.body.imageUrl).toBeNull();
+    expect(detail.body.maxCapacity).toBeNull();
+
+    const blank = await send(app, 'patch', `/api/v1/events/${event.body.id}`, adminToken, {
+      description: '',
+      imageUrl: '   ',
+      maxCapacity: '',
+    }).expect(400);
+    expect(blank.body.code).toBe('BAD_REQUEST');
+
+    const afterBlank = await send(app, 'get', `/api/v1/admin/events/${event.body.id}`, adminToken).expect(200);
+    expect(afterBlank.body.description).toBeNull();
+
+    const whitespace = await send(app, 'patch', `/api/v1/events/${event.body.id}`, adminToken, {
+      description: '   ',
+      imageUrl: '   ',
+    }).expect(200);
+    expect(whitespace.body.description).toBeNull();
+    expect(whitespace.body.imageUrl).toBeNull();
+
+    const blankVenueText = await send(app, 'patch', `/api/v1/venues/${ven.body.id}`, adminToken, {
+      description: '   ',
+    }).expect(200);
+    expect(blankVenueText.body.description).toBeNull();
+  });
+
   it('change-password: wrong current rejected, success revokes sessions', async () => {
     await send(app, 'post', '/api/v1/auth/change-password', userToken, {
       currentPassword: 'wrongpass123',
@@ -278,6 +366,37 @@ describe('Account & admin foundations (e2e)', () => {
 
     const read = await send(app, 'patch', `/api/v1/notifications/${found.id}/read`, userToken, {}).expect(200);
     expect(read.body.id).toBe(found.id);
+  });
+
+  it('notifications paginate instead of truncating at the default limit', async () => {
+    const buyer = await send(app, 'post', '/api/v1/auth/register', undefined, {
+      email: `pager-${suffix}@example.com`,
+      password: 'pagerpass123',
+      name: 'Pager',
+    }).expect(201);
+    const pagerToken = buyer.body.accessToken;
+
+    await send(app, 'post', '/api/v1/cart/items', pagerToken, { ticketTypeId, quantity: 1 }).expect(201);
+    await send(app, 'post', '/api/v1/checkout', pagerToken, {}).expect(201);
+
+    const all = await send(app, 'get', '/api/v1/notifications?limit=1&page=1', pagerToken).expect(200);
+    expect(all.body.data).toHaveLength(1);
+    expect(all.body.page).toBe(1);
+    expect(all.body.limit).toBe(1);
+    expect(all.body.total).toBeGreaterThanOrEqual(1);
+    expect(typeof all.body.unreadCount).toBe('number');
+
+    const firstId = all.body.data[0].id;
+    const second = await send(app, 'get', '/api/v1/notifications?limit=1&page=2', pagerToken).expect(200);
+    expect(second.body.page).toBe(2);
+    if (second.body.data.length > 0) {
+      expect(second.body.data[0].id).not.toBe(firstId);
+    } else {
+      expect(all.body.total).toBe(1);
+    }
+
+    const huge = await send(app, 'get', '/api/v1/notifications?limit=500', pagerToken).expect(400);
+    expect(huge.body.code).toBe('BAD_REQUEST');
   });
 
   it('customer cancel: refunds order, restores stock, 409 on re-cancel, 404 cross-user', async () => {
