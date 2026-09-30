@@ -58,7 +58,18 @@ pnpm dev:frontend    # SPA on :4200
 ```
 
 The seed is idempotent: re-running it never duplicates data and it also removes throwaway
-e2e fixtures (`E2E *` records and throwaway `…@example.com` users).
+e2e fixtures (`E2E *` records and throwaway `…@example.com` users plus their orders and carts).
+Real user data — including your own orders — is never touched by the default run.
+
+Two seed modes exist:
+
+| Command            | What it does                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| `pnpm seed`        | Safe default: adds/keeps demo data, cleans only throwaway e2e fixtures                 |
+| `pnpm seed:purge`  | Full demo reset: also drops every order, cart, favorite and notification, and restores seeded ticket stock |
+
+`pnpm seed:purge` is the one to reach for when you want the catalog back at its
+seeded state after buying demo tickets by hand.
 
 ### Seeded accounts
 
@@ -80,12 +91,17 @@ Run from the workspace root unless noted.
 | `pnpm build`        | Build `@eventia/shared` then the backend                   |
 | `pnpm build:shared` | Build `@eventia/shared` only                               |
 | `pnpm migrate`      | Run TypeORM migrations                                     |
-| `pnpm seed`         | Idempotent demo data + e2e fixture cleanup                 |
+| `pnpm seed`         | Idempotent demo data + e2e fixture cleanup (safe default)   |
+| `pnpm seed:purge`   | Full demo reset (orders/carts/notifications + stock)       |
+| `pnpm lint`         | oxlint (backend) + eslint (frontend)                       |
 | `pnpm dev:backend`  | Backend in watch mode (`:3000`)                            |
 | `pnpm dev:frontend` | Angular dev server (`:4200`)                               |
 | `pnpm -C backend lint`     | oxlint over `src/` and `test/`                     |
 | `pnpm -C backend test`     | Backend unit tests (vitest)                       |
 | `pnpm -C backend test:e2e` | Backend e2e tests (vitest, needs a running DB)  |
+| `pnpm -C backend test:cov`     | Unit tests with V8 coverage (`backend/coverage`)         |
+| `pnpm -C backend test:cov:e2e` | E2e tests with V8 coverage (`backend/coverage-e2e`)     |
+| `pnpm -C frontend lint`       | ESLint (Angular + TypeScript + a11y templates)          |
 | `pnpm -C frontend test`    | Frontend tests (vitest + jsdom)                   |
 | `pnpm -C frontend build`   | Production Angular build                         |
 
