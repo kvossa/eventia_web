@@ -1,5 +1,4 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { AdminNav } from '../../components/admin-nav';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
@@ -15,7 +14,7 @@ interface StatCard {
 
 @Component({
   selector: 'app-admin-dashboard',
-  imports: [RouterLink, AdminNav, Loading],
+  imports: [AdminNav, Loading],
   template: `
     <app-admin-nav>
     <div class="page">

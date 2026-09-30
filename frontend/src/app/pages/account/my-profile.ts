@@ -1,6 +1,5 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { Loading } from '../../components/loading';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
@@ -9,7 +8,7 @@ import { ToastService } from '../../core/toast.service';
 
 @Component({
   selector: 'app-my-profile',
-  imports: [ReactiveFormsModule, RouterLink, Loading],
+  imports: [ReactiveFormsModule, Loading],
   template: `
     <div class="page narrow">
       <h1 class="page-title">My profile</h1>
