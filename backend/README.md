@@ -12,10 +12,11 @@ pnpm build              # nest build
 pnpm lint               # oxlint src/ test/
 pnpm test               # unit tests (vitest, no DB required)
 pnpm test:e2e           # e2e tests (vitest, needs PostgreSQL + migrations + seed)
-pnpm test:cov           # unit tests + V8 coverage -> coverage/
-pnpm test:cov:e2e       # e2e tests + V8 coverage -> coverage-e2e/
+pnpm test:cov           # unit tests + V8 coverage -> coverage/ (enforced thresholds)
+pnpm test:cov:e2e       # e2e tests + V8 coverage -> coverage-e2e/ (enforced thresholds)
 pnpm seed               # tsx src/seed.ts (idempotent demo data + e2e fixture cleanup)
 pnpm seed -- --purge    # full demo reset: also drops orders/carts/notifications + restores stock
+                        # (same thing as `pnpm seed:purge` from the workspace root)
 pnpm migration:run      # apply migrations
 pnpm migration:generate src/migrations/AddThing   # positional path; --name= is unsupported
 ```
@@ -75,7 +76,9 @@ field named `file`:
 - E2e specs (`test/*.e2e-spec.ts`) boot the real `AppModule` against PostgreSQL; they need
   migrations applied and the seeded admin (`root@eventia.local` / `adminpass1234`).
 - E2e fixtures use time-stamped slugs and emails, and `pnpm seed` removes them afterwards.
-- Coverage is reported separately per suite; the e2e run is the meaningful figure
-  (~82% statements / ~86% lines) because unit specs only exercise pure helpers.
+- Coverage is reported separately per suite and both runs **fail** if thresholds are missed.
+  The e2e run is the meaningful figure (~82.5% statements / ~86.5% lines, gate at 80/60/84/84)
+  because unit specs only exercise pure helpers — the unit floor (8/5/5/8) exists only to catch
+  a catastrophic drop, not to describe real coverage.
 - `pnpm seed` is the safe default and never deletes real orders. `--purge` is the explicit
   full-reset escape hatch.

@@ -19,6 +19,12 @@ export default defineConfig({
         'src/seed-data.ts',
         '**/*.spec.ts',
       ],
+      thresholds: {
+        statements: 8,
+        branches: 5,
+        functions: 5,
+        lines: 8,
+      },
     },
   },
 });
