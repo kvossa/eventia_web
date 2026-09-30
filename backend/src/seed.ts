@@ -47,10 +47,21 @@ const THROWAWAY_NAME_PREDICATE = `(
   OR name = 'Harmony Events'
 )`;
 
+const purge = process.argv.includes('--purge');
+
 async function cleanupTestFixtures(): Promise<void> {
   await AppDataSource.transaction(async (em) => {
-    await em.query(`DELETE FROM orders`);
-    await em.query(`DELETE FROM cart_items`);
+    if (purge) {
+      await em.query(`DELETE FROM orders`);
+      await em.query(`DELETE FROM cart_items`);
+      await em.query(`DELETE FROM carts`);
+      await em.query(`DELETE FROM favorites`);
+      await em.query(`DELETE FROM notifications`);
+    } else {
+      await em.query(
+        `DELETE FROM orders WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`,
+      );
+    }
     await em.query(`DELETE FROM email_outbox`);
     await em.query(
       `DELETE FROM events WHERE ${THROWAWAY_NAME_PREDICATE} OR "deletedAt" IS NOT NULL`,
@@ -72,7 +83,9 @@ async function cleanupTestFixtures(): Promise<void> {
     await em.query(`DELETE FROM users WHERE ${E2E_USER_PREDICATE}`);
   });
   console.log(
-    '[seed] removed test fixtures (E2E */Dbg */D */probe-* names, *(copy)*, Harmony Events, soft-deleted leftovers, throwaway e2e users), orders and email outbox',
+    purge
+      ? '[seed --purge] full demo reset: dropped all orders, carts, favorites, notifications and the email outbox'
+      : '[seed] removed test fixtures (E2E */Dbg */D */probe-* names, *(copy)*, Harmony Events, soft-deleted leftovers, throwaway e2e users and their orders/carts) and the email outbox',
   );
 }
 
@@ -347,6 +360,26 @@ async function seedNotifications(): Promise<void> {
   }
 }
 
+async function resetSeededTicketStock(): Promise<void> {
+  const ttRepo = AppDataSource.getRepository(TicketType);
+  const eventRepo = AppDataSource.getRepository(Event);
+  let reset = 0;
+
+  for (const ev of SEED_EVENTS) {
+    const event = await eventRepo.findOneBy({ name: ev.name });
+    if (!event) continue;
+    for (const tt of ev.ticketTypes) {
+      const sold = tt.quantitySold ?? 0;
+      const existing = await ttRepo.findOneBy({ eventId: event.id, name: tt.name });
+      if (!existing || existing.quantitySold === sold) continue;
+      existing.quantitySold = sold;
+      await ttRepo.save(existing);
+      reset += 1;
+    }
+  }
+  created.stockResets = reset;
+}
+
 async function seedAll(): Promise<void> {
   await seedUsers();
 
@@ -358,6 +391,8 @@ async function seedAll(): Promise<void> {
   for (const ev of SEED_EVENTS) {
     await seedEvent(ev, categories, organizers, venues);
   }
+
+  if (purge) await resetSeededTicketStock();
 
   await seedFavorites();
   await seedNotifications();

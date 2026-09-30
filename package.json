@@ -8,7 +8,8 @@
     "dev:backend": "pnpm -C backend start:dev",
     "dev:frontend": "pnpm -C frontend start",
     "migrate": "pnpm -C backend migration:run",
-    "seed": "pnpm -C backend seed"
+    "seed": "pnpm -C backend seed",
+    "seed:purge": "pnpm -C backend seed --purge"
   },
   "packageManager": "pnpm@10.33.4",
   "pnpm": {
