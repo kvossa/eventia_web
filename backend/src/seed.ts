@@ -29,9 +29,19 @@ const BCRYPT_COST = 12;
 const created: Record<string, number> = {};
 
 const E2E_USER_PREDICATE = `(
-  email ~ '-[a-z0-9]{8}@example[.]com$'
+  email ~ '^(alice|bob|buyer|buyer2|customer|pager|e2e)-[a-z0-9-]+@example[.]com$'
+  OR email ~ '-[a-z0-9]{8}@example[.]com$'
   OR email LIKE 'audit%@t.local'
-  OR email LIKE 'e2e-%@example.com'
+)`;
+
+const THROWAWAY_NAME_PREDICATE = `(
+  name LIKE 'E2E %'
+  OR name LIKE 'Dbg %'
+  OR name LIKE 'D %'
+  OR name LIKE 'P Org probe-%'
+  OR name LIKE 'P Ev probe-%'
+  OR name LIKE '%(copy)%'
+  OR name = 'Harmony Events'
 )`;
 
 async function cleanupTestFixtures(): Promise<void> {
@@ -40,11 +50,15 @@ async function cleanupTestFixtures(): Promise<void> {
     await em.query(`DELETE FROM cart_items`);
     await em.query(`DELETE FROM email_outbox`);
     await em.query(
-      `DELETE FROM events WHERE name LIKE 'E2E %' OR name LIKE '%(copy)%' OR name = 'Summer Symphony Nights'`,
+      `DELETE FROM events WHERE ${THROWAWAY_NAME_PREDICATE} OR "deletedAt" IS NOT NULL`,
     );
-    await em.query(`DELETE FROM venues WHERE name LIKE 'E2E %'`);
-    await em.query(`DELETE FROM organizers WHERE slug = 'harmony-events-2' OR name LIKE 'E2E %'`);
-    await em.query(`DELETE FROM categories WHERE name LIKE 'E2E %'`);
+    await em.query(
+      `DELETE FROM venues WHERE ${THROWAWAY_NAME_PREDICATE} OR "deletedAt" IS NOT NULL`,
+    );
+    await em.query(
+      `DELETE FROM organizers WHERE slug = 'harmony-events-2' OR ${THROWAWAY_NAME_PREDICATE} OR "deletedAt" IS NOT NULL`,
+    );
+    await em.query(`DELETE FROM categories WHERE ${THROWAWAY_NAME_PREDICATE}`);
     await em.query(
       `DELETE FROM notifications WHERE user_id IN (SELECT id FROM users WHERE ${E2E_USER_PREDICATE})`,
     );
@@ -55,7 +69,7 @@ async function cleanupTestFixtures(): Promise<void> {
     await em.query(`DELETE FROM users WHERE ${E2E_USER_PREDICATE}`);
   });
   console.log(
-    '[seed] removed test fixtures (E2E *, *(copy)*, harmony-events-2, Summer Symphony Nights, throwaway e2e users) and cleared email_outbox',
+    '[seed] removed test fixtures (E2E */Dbg */D */probe-* names, *(copy)*, Harmony Events, soft-deleted leftovers, throwaway e2e users), orders and email outbox',
   );
 }
 
