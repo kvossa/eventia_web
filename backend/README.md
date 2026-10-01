@@ -72,7 +72,12 @@ field named `file`:
 
 ## Testing notes
 
-- Unit specs are colocated (`src/**/*.spec.ts`) and mock TypeORM repositories.
+- Unit specs are colocated (`src/**/*.spec.ts`) and mock TypeORM repositories; the exception is
+  `src/seed-data.spec.ts`, which needs no mocks because it asserts seed-data invariants
+  (section bindings resolve, per-section allocation <= seat count, `quantitySold <= quantity`,
+  `HH:MM` times).
+- `test/seed-seat-layout.e2e-spec.ts` is read-only: it asserts the seeded reserved-seat layouts through
+  the public seat-map endpoint, so it creates no fixtures and needs no cleanup.
 - E2e specs (`test/*.e2e-spec.ts`) boot the real `AppModule` against PostgreSQL; they need
   migrations applied and the seeded admin (`root@eventia.local` / `adminpass1234`).
 - E2e fixtures use time-stamped slugs and emails, and `pnpm seed` removes them afterwards.
