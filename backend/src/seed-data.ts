@@ -478,7 +478,6 @@ const SEED_EVENTS: SeedEvent[] = [
         description: 'Cheapest way in, limited release',
         priceCents: 1900,
         quantity: 12,
-        quantitySold: 11,
         maxPerCustomer: 5,
         sections: ['Stalls'],
       },
@@ -515,10 +514,9 @@ const SEED_EVENTS: SeedEvent[] = [
     ticketTypes: [
       {
         name: 'Day Pass',
-        description: 'Single-day entry, almost sold out',
+        description: 'Single-day entry for the main-stage sets',
         priceCents: 4200,
         quantity: 40,
-        quantitySold: 38,
         maxPerCustomer: 6,
         sections: ['Main Floor'],
       },
