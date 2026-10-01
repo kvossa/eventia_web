@@ -25,7 +25,9 @@
     "typeorm": "tsx ./node_modules/typeorm/cli.js",
     "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate -d ./src/config/data-source.ts",
     "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d ./src/config/data-source.ts",
-    "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d ./src/config/data-source.ts"
+    "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d ./src/config/data-source.ts",
+    "migration:run:dist": "node ./node_modules/typeorm/cli.js migration:run -d ./dist/config/data-source.js",
+    "migration:revert:dist": "node ./node_modules/typeorm/cli.js migration:revert -d ./dist/config/data-source.js"
   },
   "dependencies": {
     "@eventia/shared": "workspace:*",

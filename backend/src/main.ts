@@ -15,9 +15,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.set('trust proxy', Number(config.get<string>('TRUST_PROXY_HOPS') ?? 1));
   app.use(cookieParser());
-  app.useStaticAssets(UPLOAD_ROOT, { prefix: `${UPLOADS_URL_PREFIX}/` });
 
+  app.useStaticAssets(UPLOAD_ROOT, { prefix: `${UPLOADS_URL_PREFIX}/` });
   app.enableCors({
     origin: (config.get<string>('CORS_ORIGINS') ?? 'http://localhost:4200').split(','),
     credentials: true,
@@ -31,14 +32,16 @@ async function bootstrap() {
     }),
   );
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Eventia API')
-    .setDescription('Ticketing platform API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document);
+  if (config.get<string>('NODE_ENV') !== 'production' || config.get<string>('ENABLE_API_DOCS') === 'true') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Eventia API')
+      .setDescription('Ticketing platform API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   app.enableShutdownHooks();
 

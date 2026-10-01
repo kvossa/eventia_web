@@ -3,6 +3,8 @@ import { DataSource } from 'typeorm';
 import { entities } from '../entities/index.js';
 import { buildDataSourceOptions } from './database.config.js';
 
+const migrationGlob = import.meta.url.includes('/dist/') ? 'dist/migrations/*.js' : 'src/migrations/*.ts';
+
 export const AppDataSource = new DataSource(
   buildDataSourceOptions(
     {
@@ -13,6 +15,6 @@ export const AppDataSource = new DataSource(
       database: process.env.DB_DATABASE ?? 'eventia',
     },
     entities,
-    ['src/migrations/*.ts'],
+    [migrationGlob],
   ),
 );

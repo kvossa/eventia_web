@@ -14,6 +14,9 @@ uploads/
 .env
 *.local
 *.secret
+deploy/caddy-data/
+deploy/caddy-config/
+deploy/www/
 
 # Logs
 *.log

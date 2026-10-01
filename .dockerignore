@@ -1,0 +1,46 @@
+# A bare pattern matches the repo root only, so the **/ variants are required
+# to catch backend/node_modules and friends. Both Dockerfiles compile inside
+# the image, so none of this is needed from the context.
+**/node_modules
+**/dist
+**/coverage
+**/coverage-e2e
+*.tsbuildinfo
+node_modules/
+dist/
+coverage/
+coverage-e2e/
+
+.git/
+.github/
+
+# These patterns are anchored to the repo root only. A bare ".env" or ".env.*"
+# does NOT match backend/.env — that file holds real local secrets and must stay
+# out of the build context.
+**/.env
+**/.env.*
+**/*.local
+**/*.secret
+.env
+.env.*
+*.local
+*.secret
+deploy/.env
+
+uploads/
+backend/uploads/
+
+# Caddy's /data and /config are bind-mounted at runtime and owned by root, so
+# leaving them in the context makes every build emit "can't stat" warnings.
+deploy/caddy-data/
+deploy/caddy-config/
+deploy/www/
+
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

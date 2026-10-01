@@ -78,7 +78,12 @@ export interface SeedEvent {
 }
 
 const DEMO_USERS: SeedUser[] = [
-  { name: 'Eventia Admin', email: 'root@eventia.local', password: 'adminpass1234', role: 'admin' },
+  {
+    name: 'Eventia Admin',
+    email: process.env.SEED_ADMIN_EMAIL ?? 'root@eventia.local',
+    password: process.env.SEED_ADMIN_PASSWORD ?? 'adminpass1234',
+    role: 'admin',
+  },
   { name: 'Alice Novak', email: 'alice@example.com', password: 'alicepass123', role: 'customer' },
   { name: 'Sam Wise', email: 'sam@example.com', password: 'sampass123', role: 'customer' },
   { name: 'Mia Chen', email: 'mia@example.com', password: 'miapass123', role: 'customer' },

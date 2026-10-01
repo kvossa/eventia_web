@@ -52,6 +52,10 @@ const THROWAWAY_EVENT_PREDICATE = `(${throwawayNamePredicate('e.')} OR e."delete
 
 const purge = process.argv.includes('--purge');
 
+const allowDestructive = process.env.SEED_ALLOW_DESTRUCTIVE
+  ? process.env.SEED_ALLOW_DESTRUCTIVE === 'true'
+  : process.env.NODE_ENV !== 'production';
+
 async function cleanupTestFixtures(): Promise<void> {
   await AppDataSource.transaction(async (em) => {
     if (purge) {
@@ -415,7 +419,11 @@ async function seedAll(): Promise<void> {
 async function main(): Promise<void> {
   await AppDataSource.initialize();
   try {
-    await cleanupTestFixtures();
+    if (allowDestructive) {
+      await cleanupTestFixtures();
+    } else {
+      console.log('[seed] skipped fixture cleanup: set SEED_ALLOW_DESTRUCTIVE=true to enable it.');
+    }
     await seedAll();
 
     const lines = Object.entries(created)

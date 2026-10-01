@@ -25,14 +25,18 @@ eventia/
 ├─ pnpm-workspace.yaml
 ├─ backend/              # NestJS API — /api/v1 prefix, Swagger at /api/docs
 ├─ frontend/             # Angular SPA
-└─ shared/               # @eventia/shared — shared types/enums (built to dist/)
+├─ shared/               # @eventia/shared — shared types/enums (built to dist/)
+├─ compose.yml           # full stack: postgres, migrate, backend, frontend, caddy
+├─ Caddyfile             # TLS + reverse proxy (HTTPS, ACME IP certificates)
+└─ deploy/               # production deployment guide and VM bootstrap script
 ```
 
 All money values are **integer cents** (`priceCents`, `totalCents`, …) across every layer.
 
 ## Prerequisites
 
-- Node.js 26, pnpm 10 (`corepack enable` picks up the pinned `packageManager`)
+- Node.js 26, pnpm 10. Node 26 no longer ships Corepack, so install pnpm once with
+  `npm install -g pnpm@10.33.4` (see `.nvmrc` for the pinned Node version).
 - Docker (for PostgreSQL)
 
 ## Quick start
@@ -123,7 +127,23 @@ then remove `backend/src/migrations/*.ts`, regenerate and re-run `pnpm migrate`.
 
 Backend env vars live in `backend/.env` (see `.env.example`): `PORT`, `DB_*`, `JWT_*`,
 `CORS_ORIGINS`, `COOKIE_SECURE`, `THROTTLE_*` and `UPLOAD_DIR`.
-The Angular dev server talks to `http://localhost:3000/api/v1` (`frontend/src/app/core/env.ts`).
+The Angular dev server talks to `http://localhost:3000/api/v1` (`frontend/src/app/core/env.ts`);
+production builds use the relative `/api/v1` so the SPA and API share one origin
+(`frontend/src/app/core/env.prod.ts`).
+
+## Deployment
+
+`compose.yml` runs the whole stack — PostgreSQL, migrations, API, built Angular assets and
+Caddy for HTTPS. It expects a single public origin, because the refresh cookie is same-site.
+
+```bash
+cp deploy/.env.example deploy/.env   # set the IP, secrets and admin credentials
+docker compose --env-file deploy/.env up -d --build
+```
+
+`deploy/README.md` is the full guide: Oracle Always Free VM provisioning (A1.Flex, Ubuntu
+24.04 ARM64), VCN and UFW rules, a repeatable bootstrap script (`deploy/vm-setup.sh`),
+first-admin setup, backups, updates and troubleshooting.
 
 ## Event images
 

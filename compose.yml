@@ -1,0 +1,112 @@
+name: eventia
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eventia}
+      POSTGRES_USER: ${POSTGRES_USER:-eventia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 forces a TCP probe. Without it pg_isready uses the unix
+      # socket, which also answers during initdb's temporary postmaster — the
+      # healthcheck would pass before the real server is listening, and the
+      # migrate container would then hit a connection that is about to close.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-eventia} -d ${POSTGRES_DB:-eventia}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: eventia-backend:latest
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-eventia}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_DATABASE: ${POSTGRES_DB:-eventia}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+    command: ["node", "node_modules/typeorm/cli.js", "-d", "dist/config/data-source.js", "migration:run"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: eventia-backend:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER:-eventia}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_DATABASE: ${POSTGRES_DB:-eventia}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      FRONTEND_URL: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      CORS_ORIGINS: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+      COOKIE_SECURE: "true"
+      UPLOAD_DIR: /app/uploads
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      MAIL_DRAIN_INTERVAL_MS: ${MAIL_DRAIN_INTERVAL_MS:-15000}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ALLOW_DESTRUCTIVE: "false"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+
+  frontend-assets:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: eventia-frontend:latest
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - rm -rf /srv/www/* && cp -a /usr/share/nginx/html/. /srv/www/
+    volumes:
+      - frontend_www:/srv/www
+    restart: "no"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+      PUBLIC_SITE_ADDRESS: ${PUBLIC_SITE_ADDRESS:?PUBLIC_SITE_ADDRESS is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy-data:/data
+      - ./deploy/caddy-config:/config
+      - uploads:/srv/uploads:ro
+      - frontend_www:/srv/www:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend-assets:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  uploads:
+  frontend_www:
